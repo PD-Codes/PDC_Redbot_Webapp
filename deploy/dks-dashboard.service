@@ -1,0 +1,23 @@
+[Unit]
+Description=DKS Redbot WebApp (SvelteKit/adapter-node)
+After=network.target
+
+[Service]
+Type=simple
+# Pfade ggf. anpassen:
+WorkingDirectory=/opt/dks/redbot-dks-dashboard
+EnvironmentFile=/opt/dks/redbot-dks-dashboard/.env
+ExecStart=/usr/bin/node build
+Restart=on-failure
+RestartSec=5
+User=dks
+Group=dks
+
+# Härtung
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target

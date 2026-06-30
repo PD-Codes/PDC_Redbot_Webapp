@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="de" class="dark">
+  <head>
+    <meta charset="utf-8" />
+    <!-- Favicon is set dynamically to the bot avatar from the app layout head. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- Fallback description; the per-page svelte:head wins. -->
+    <meta name="description" content="PDC Dashboard" />
+    <title>PDC Dashboard</title>
+    %sveltekit.head%
+  </head>
+  <body data-sveltekit-preload-data="hover" class="bg-background text-foreground">
+    <div style="display: contents">%sveltekit.body%</div>
+  </body>
+</html>

@@ -1,0 +1,36 @@
+import type { PageServerLoad } from './$types';
+import { rpc, authFromUser } from '$lib/server/rpc';
+
+// Öffentliche Startseite: KEIN Redirect mehr. Zeigt Bot-Infos, Kennzahlen und
+// die aktiven Befehle – mit Login-Button oben rechts.
+export const load: PageServerLoad = async ({ locals }) => {
+  let commands: any = { bot: null, prefix: [], slash: [], counts: { prefix: 0, slash: 0 } };
+  let stats: any = null;
+  let online = true;
+
+  try {
+    // Öffentlich erreichbar – liefert bot {name, avatar} + aktive Commands.
+    commands = await rpc('core.commands', {});
+
+    // Öffentliche Bot-Kennzahlen (Server/Nutzer/Uptime/Owner/Beschreibung).
+    // Optional: lege dafür einen public RPC `core.stats` an (siehe README).
+    try {
+      stats = await rpc('core.stats', {});
+    } catch {
+      stats = null;
+    }
+
+    // Eingeloggt: mit authentifizierten Botinfos anreichern (Fallback).
+    if (locals.user && !stats) {
+      try {
+        stats = await rpc('core.botinfo', {}, authFromUser(locals.user));
+      } catch {
+        /* ignore */
+      }
+    }
+  } catch {
+    online = false;
+  }
+
+  return { commands, stats, online, user: locals.user };
+};

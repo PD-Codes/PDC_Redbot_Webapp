@@ -1,0 +1,14 @@
+node_modules
+/build
+/.svelte-kit
+/package
+.env
+.env.*
+!.env.example
+vite.config.ts.timestamp-*
+.DS_Store
+.npm-cache
+.cache
+deploy/sync.config
+mdtest.mts
+mdtest2.mts

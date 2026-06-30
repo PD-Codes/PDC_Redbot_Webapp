@@ -1,0 +1,24 @@
+services:
+  webapp:
+    build: .
+    image: pdc-redbot-webapp:latest
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    environment:
+      # adapter-node
+      HOST: 0.0.0.0
+      PORT: 3000
+      NODE_ENV: production
+      # Läuft der Bot auf dem Host, erreicht der Container das Gateway über
+      # host.docker.internal. Auf Linux sorgt extra_hosts unten dafür.
+      # (Kann in .env via GATEWAY_URL überschrieben werden.)
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/login"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
