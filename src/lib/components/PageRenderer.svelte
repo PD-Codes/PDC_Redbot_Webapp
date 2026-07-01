@@ -18,6 +18,9 @@
 
   const CHART_COLORS = ['#5865F2', '#22c55e', '#f59e0b', '#ef4444', '#06b6d4', '#a855f7'];
 
+  // Cast lives in the script (TS) - inline `as` casts are not allowed in markup.
+  const selectValue = (e: Event): string => (e.currentTarget as HTMLSelectElement).value;
+
   function chartHeight(c: any): string {
     const h = c?.props?.height;
     return typeof h === 'number' && h > 0 ? `${h}px` : '20rem';
@@ -48,7 +51,7 @@
           class="rounded-md border border-border bg-background px-2 py-1.5 text-sm"
           value={ctl.value ?? ''}
           disabled={busy}
-          on:change={(e) => onControl(ctl.id, (e.currentTarget as HTMLSelectElement).value)}
+          on:change={(e) => onControl(ctl.id, selectValue(e))}
         >
           {#each ctl.options as o (o.value)}
             <option value={o.value}>{o.label}</option>
