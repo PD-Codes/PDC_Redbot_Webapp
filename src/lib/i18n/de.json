@@ -438,5 +438,17 @@
   "pages.markdown_help": "Markdown: # Überschrift, **fett**, *kursiv*, - Liste, [Text](https://…), `code`.",
   "pages.editor_placeholder": "# Anleitung\n\nSchreibe hier deinen Inhalt in Markdown …",
   "pages.default_content": "# Überschrift\n\nDein Inhalt …",
-  "modules.no_settings": "Keine Einstellungen verfügbar."
+  "modules.no_settings": "Keine Einstellungen verfügbar.",
+  "nav.module_sites": "Modul (Cog) Seiten",
+  "guild.module_pages": "Modul-Seiten",
+  "settings.autoupdate_title": "Automatischer Update-Check",
+  "settings.autoupdate_desc": "Prüft im Hintergrund regelmäßig, ob eine neuere Webapp-Version verfügbar ist (server-seitig, unabhängig von offenen Tabs).",
+  "settings.autoupdate_interval": "Intervall",
+  "settings.autoupdate_off": "Aus",
+  "settings.autoupdate_last": "Letzter automatischer Check: {time}",
+  "settings.cogupdate_title": "Automatischer Cog-Update-Check & Alerts",
+  "settings.cogupdate_desc": "Prüft regelmäßig im Bot, ob installierte Cogs Updates haben (Badge im Menü am Punkt „Cogs\").",
+  "settings.alerts_dm": "Alerts per DM an den Owner",
+  "settings.alerts_dm_hint": "Benachrichtigt bei verfügbaren Cog-Updates und (falls Schwelle > 0) hoher RAM-Nutzung.",
+  "settings.mem_threshold": "RAM-Warnschwelle (MB, 0 = aus)"
 }

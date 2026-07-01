@@ -1,6 +1,7 @@
 <script lang="ts">
   import Card from '$lib/components/ui/Card.svelte';
   import { invalidateAll } from '$app/navigation';
+  import { onMount } from 'svelte';
   import { t } from '$lib/i18n';
 
   export let data: any;
@@ -17,6 +18,94 @@
   // Branding
   let ui = { ...(data.dash?.ui ?? {}) };
   if (ui.short_desc === undefined) ui.short_desc = '';
+
+  // Automatic update check (webapp-side scheduler; 0 = off).
+  let autoUpdateH = 0;
+  let autoAllowed: number[] = [0, 1, 2, 4, 8, 16, 24];
+  let autoLast: { available: boolean; current: string; latest?: string; error?: string; checkedAt: number } | null = null;
+  let autoMsg = '';
+
+  // Cog-update monitor + alerts (bot-side).
+  let cogUpdateH = 0;
+  let alertsDm = false;
+  let memThreshold = 0;
+  let monMsg = '';
+  let monCogs: string[] = [];
+
+  onMount(async () => {
+    try {
+      const r = await fetch('/api/update/config');
+      const j = await r.json();
+      if (!j.error) {
+        autoUpdateH = j.intervalH ?? 0;
+        autoAllowed = j.allowed ?? autoAllowed;
+        autoLast = j.last ?? null;
+      }
+    } catch {
+      /* ignore */
+    }
+    try {
+      const r = await fetch('/api/monitor');
+      const j = await r.json();
+      if (!j.error && j.config) {
+        cogUpdateH = j.config.cog_update_interval_h ?? 0;
+        alertsDm = !!j.config.alerts_dm;
+        memThreshold = j.config.mem_threshold_mb ?? 0;
+        monCogs = j.last?.cogs ?? [];
+      }
+    } catch {
+      /* ignore */
+    }
+  });
+
+  async function saveMonitor() {
+    monMsg = '';
+    try {
+      const r = await fetch('/api/monitor', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          cog_update_interval_h: cogUpdateH,
+          alerts_dm: alertsDm,
+          mem_threshold_mb: memThreshold
+        })
+      });
+      const j = await r.json();
+      monMsg = j.error ? '✗ ' + j.error : '✓ ' + $t('common.saved');
+      if (!j.error && j.config) {
+        cogUpdateH = j.config.cog_update_interval_h ?? 0;
+        alertsDm = !!j.config.alerts_dm;
+        memThreshold = j.config.mem_threshold_mb ?? 0;
+      }
+    } catch (e) {
+      monMsg = '✗ ' + (e instanceof Error ? e.message : 'Fehler');
+    }
+  }
+
+  async function saveAutoUpdate() {
+    autoMsg = '';
+    try {
+      const r = await fetch('/api/update/config', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ intervalH: autoUpdateH })
+      });
+      const j = await r.json();
+      autoMsg = j.error ? '✗ ' + j.error : '✓ ' + $t('common.saved');
+      if (!j.error) autoUpdateH = j.intervalH;
+    } catch (e) {
+      autoMsg = '✗ ' + (e instanceof Error ? e.message : 'Fehler');
+    }
+  }
+
+  function fmtWhen(ms: number | undefined): string {
+    if (!ms) return '—';
+    try {
+      return new Date(ms).toLocaleString();
+    } catch {
+      return '—';
+    }
+  }
 
   async function call(url: string, body: unknown, label: string) {
     busy = label;
@@ -141,6 +230,61 @@
 
     <!-- Globale Modul-Einstellungen ausgeblendet: werden bereits unter Cogs → Global
          verwaltet. Doppelte Pflege führte zu Verwirrung (siehe Feedback). -->
+
+    <Card class="p-5">
+      <h2 class="mb-1 text-base font-semibold">{$t('settings.autoupdate_title')}</h2>
+      <p class="mb-3 text-sm text-muted-foreground">{$t('settings.autoupdate_desc')}</p>
+      <div class="flex flex-wrap items-end gap-3">
+        <label class="flex flex-col gap-1 text-sm">
+          <span class="text-xs text-muted-foreground">{$t('settings.autoupdate_interval')}</span>
+          <select bind:value={autoUpdateH} on:change={saveAutoUpdate}
+            class="rounded-md border border-input bg-background px-3 py-1.5 text-sm">
+            {#each autoAllowed as h}
+              <option value={h}>{h === 0 ? $t('settings.autoupdate_off') : `${h}h`}</option>
+            {/each}
+          </select>
+        </label>
+        {#if autoMsg}<span class="pb-2 text-sm text-muted-foreground">{autoMsg}</span>{/if}
+      </div>
+      {#if autoLast}
+        <p class="mt-3 text-xs text-muted-foreground">
+          {$t('settings.autoupdate_last', { time: fmtWhen(autoLast.checkedAt) })}
+          {#if autoLast.error}· {autoLast.error}
+          {:else if autoLast.available}· ⬆ v{autoLast.current} → v{autoLast.latest}
+          {:else}· ✓ v{autoLast.current}{/if}
+        </p>
+      {/if}
+    </Card>
+
+    <Card class="p-5">
+      <h2 class="mb-1 text-base font-semibold">{$t('settings.cogupdate_title')}</h2>
+      <p class="mb-3 text-sm text-muted-foreground">{$t('settings.cogupdate_desc')}</p>
+      <div class="flex flex-wrap items-end gap-4">
+        <label class="flex flex-col gap-1 text-sm">
+          <span class="text-xs text-muted-foreground">{$t('settings.autoupdate_interval')}</span>
+          <select bind:value={cogUpdateH} on:change={saveMonitor}
+            class="rounded-md border border-input bg-background px-3 py-1.5 text-sm">
+            {#each autoAllowed as h}
+              <option value={h}>{h === 0 ? $t('settings.autoupdate_off') : `${h}h`}</option>
+            {/each}
+          </select>
+        </label>
+        <label class="flex items-center gap-2 text-sm">
+          <input type="checkbox" bind:checked={alertsDm} on:change={saveMonitor} class="accent-primary" />
+          {$t('settings.alerts_dm')}
+        </label>
+        <label class="flex flex-col gap-1 text-sm">
+          <span class="text-xs text-muted-foreground">{$t('settings.mem_threshold')}</span>
+          <input type="number" min="0" bind:value={memThreshold} on:change={saveMonitor}
+            class="w-28 rounded-md border border-input bg-background px-3 py-1.5 text-sm" />
+        </label>
+        {#if monMsg}<span class="pb-2 text-sm text-muted-foreground">{monMsg}</span>{/if}
+      </div>
+      <p class="mt-2 text-xs text-muted-foreground">{$t('settings.alerts_dm_hint')}</p>
+      {#if monCogs.length}
+        <p class="mt-2 text-xs text-amber-500">⬆ {monCogs.length}: {monCogs.join(', ')}</p>
+      {/if}
+    </Card>
 
     <a href="/pages" class="inline-block text-sm text-primary hover:underline">{$t('settings.manage_pages')}</a>
   {/if}

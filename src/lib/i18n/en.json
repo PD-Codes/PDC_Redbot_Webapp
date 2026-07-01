@@ -438,5 +438,17 @@
   "pages.markdown_help": "Markdown: # Heading, **bold**, *italic*, - list, [Text](https://…), `code`.",
   "pages.editor_placeholder": "# Guide\n\nWrite your content in Markdown here …",
   "pages.default_content": "# Heading\n\nYour content …",
-  "modules.no_settings": "No settings available."
+  "modules.no_settings": "No settings available.",
+  "nav.module_sites": "Module (Cog) Sites",
+  "guild.module_pages": "Module pages",
+  "settings.autoupdate_title": "Automatic update check",
+  "settings.autoupdate_desc": "Periodically checks in the background whether a newer web app version is available (server-side, independent of open tabs).",
+  "settings.autoupdate_interval": "Interval",
+  "settings.autoupdate_off": "Off",
+  "settings.autoupdate_last": "Last automatic check: {time}",
+  "settings.cogupdate_title": "Automatic cog-update check & alerts",
+  "settings.cogupdate_desc": "Periodically checks (on the bot) whether installed cogs have updates (menu badge on “Cogs”).",
+  "settings.alerts_dm": "Alerts via DM to the owner",
+  "settings.alerts_dm_hint": "Notifies on available cog updates and (if threshold > 0) high memory usage.",
+  "settings.mem_threshold": "Memory alert threshold (MB, 0 = off)"
 }

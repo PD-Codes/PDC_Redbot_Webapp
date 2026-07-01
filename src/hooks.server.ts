@@ -1,6 +1,10 @@
 import type { Handle, HandleServerError } from '@sveltejs/kit';
 import { readSession, clearSession } from '$lib/server/session';
 import { rpc } from '$lib/server/rpc';
+import { ensureStarted } from '$lib/server/updateCheck';
+
+// Start the automatic update-check scheduler once when the server boots.
+ensureStarted();
 
 // Session-Epoch ("Sessions zurücksetzen") – zwischengespeichert, um nicht bei
 // jedem Request das Gateway zu fragen.

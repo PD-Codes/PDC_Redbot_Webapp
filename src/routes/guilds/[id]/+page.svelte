@@ -23,6 +23,8 @@
 
   const d = data.detail;
   $: widgets = data.contributions.filter((c) => c.kind === 'widget' && (c.scope ?? 'guild') !== 'global');
+  // Guild-scoped cog pages -> buttons next to "Bot settings".
+  $: guildPages = data.contributions.filter((c) => c.kind === 'page' && (c.scope ?? 'guild') !== 'global');
 
   // Panels + Listen je Modul (Cog) bündeln. Globale Beiträge (scope=global) gehören
   // NICHT hierher, sondern unter /cogs → Global.
@@ -52,7 +54,12 @@
 <div class="space-y-6">
   <div class="flex items-center justify-between">
     <a href="/guilds" class="text-sm text-muted-foreground hover:text-foreground">{$t('guild.all_servers')}</a>
-    <a href={`/guilds/${data.guildId}/settings`} class="rounded-md border border-border px-3 py-1.5 text-sm hover:bg-secondary">{$t('guild.bot_settings')}</a>
+    <div class="flex flex-wrap items-center justify-end gap-2">
+      {#each guildPages as gp (gp.key)}
+        <a href={`/modules/${encodeURIComponent(gp.key)}?guild=${data.guildId}`} class="rounded-md border border-border px-3 py-1.5 text-sm hover:bg-secondary">{gp.name}</a>
+      {/each}
+      <a href={`/guilds/${data.guildId}/settings`} class="rounded-md border border-border px-3 py-1.5 text-sm hover:bg-secondary">{$t('guild.bot_settings')}</a>
+    </div>
   </div>
 
   <!-- Overview-Karte (Bild-2-Stil) -->

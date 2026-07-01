@@ -9,6 +9,7 @@
   export let data: {
     user: { username: string; avatar?: string | null } | null;
     pages?: Array<{ slug: string; title: string; nav: boolean; visibility: string }>;
+    modulePages?: Array<{ key: string; name: string; icon: string | null }>;
     branding?: {
       title?: string;
       icon?: string;
@@ -80,6 +81,32 @@
   // Mobiles Navigations-Drawer (Hamburger). Schließt automatisch bei Navigation.
   let mobileNavOpen = false;
   $: if ($page.url.pathname) mobileNavOpen = false;
+
+  // "Update available" badge (owner-only). Fed by the automatic update check;
+  // /api/update/config is owner-gated, so non-owners simply get no badge.
+  let updateAvailable = false;
+  let cogUpdateCount = 0;
+  onMount(async () => {
+    if (!data.user) return;
+    try {
+      const r = await fetch('/api/update/config');
+      if (r.ok) {
+        const j = await r.json();
+        updateAvailable = !!(j.last && j.last.available);
+      }
+    } catch {
+      /* ignore */
+    }
+    try {
+      const r = await fetch('/api/monitor');
+      if (r.ok) {
+        const j = await r.json();
+        cogUpdateCount = Array.isArray(j.last?.cogs) ? j.last.cogs.length : 0;
+      }
+    } catch {
+      /* ignore */
+    }
+  });
 </script>
 
 <svelte:head>
@@ -108,7 +135,7 @@
       {/if}
       <span class="text-lg font-bold">{brandTitle}</span>
     </div>
-    <NavLinks user={data.user} navPages={navPages} />
+    <NavLinks user={data.user} navPages={navPages} modulePages={data.modulePages ?? []} {updateAvailable} {cogUpdateCount} />
   </aside>
 
   <!-- Mobile nav drawer -->
@@ -130,7 +157,7 @@
         </div>
         <button type="button" class="rounded-md p-1 text-muted-foreground hover:bg-secondary" aria-label="Close menu" on:click={() => (mobileNavOpen = false)}>✕</button>
       </div>
-      <NavLinks user={data.user} navPages={navPages} onNavigate={() => (mobileNavOpen = false)} />
+      <NavLinks user={data.user} navPages={navPages} modulePages={data.modulePages ?? []} {updateAvailable} {cogUpdateCount} onNavigate={() => (mobileNavOpen = false)} />
     </aside>
   {/if}
 

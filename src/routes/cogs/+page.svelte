@@ -67,20 +67,23 @@
     return okQuery && okRepo;
   });
 
-  async function post(url: string, body: unknown, label: string) {
+  async function post(url: string, body: unknown, label: string): Promise<boolean> {
     busy = label;
     msg = '';
     err = '';
     try {
       const res = await fetch(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
       const j = await res.json();
-      if (j.error) err = j.error;
-      else {
-        msg = $t('common.done');
-        await invalidateAll();
+      if (j.error) {
+        err = j.error;
+        return false;
       }
+      msg = $t('common.done');
+      await invalidateAll();
+      return true;
     } catch (e) {
       err = e instanceof Error ? e.message : 'Fehler';
+      return false;
     } finally {
       busy = '';
     }
@@ -216,7 +219,13 @@
       busy = '';
     }
   }
-  const addRepo = () => post('/api/downloader', { action: 'repo_add', name: repoName, url: repoUrl, branch: repoBranch || null }, 'repo_add');
+  const addRepo = async () => {
+    if (await post('/api/downloader', { action: 'repo_add', name: repoName, url: repoUrl, branch: repoBranch || null }, 'repo_add')) {
+      repoName = '';
+      repoUrl = '';
+      repoBranch = '';
+    }
+  };
   const removeRepo = (name: string) => post('/api/downloader', { action: 'repo_remove', name }, 'repo_rm:' + name);
   const installCog = (repo: string, cog: string) => post('/api/downloader', { action: 'cog_install', repo, cog }, 'inst:' + cog);
   const uninstallCog = (cog: string) => post('/api/downloader', { action: 'cog_uninstall', cog }, 'uninst:' + cog);

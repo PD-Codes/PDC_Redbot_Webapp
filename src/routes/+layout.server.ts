@@ -1,7 +1,8 @@
 import type { LayoutServerLoad } from './$types';
-import { rpc } from '$lib/server/rpc';
+import { rpc, authFromUser } from '$lib/server/rpc';
 
 type NavPage = { slug: string; title: string; nav: boolean; visibility: string };
+type ModulePage = { key: string; name: string; icon: string | null };
 type Branding = {
   title?: string;
   icon?: string;
@@ -23,7 +24,11 @@ let _cache: { at: number; pages: NavPage[]; branding: Branding | null } = {
 };
 const TTL_MS = 30_000;
 
-export const load: LayoutServerLoad = async ({ locals }) => {
+// Global cog pages for the "Module (Cog) Sites" menu. Permission-filtered per user,
+// so cache per (user, locale) with a short TTL to keep navigation snappy.
+const _modCache = new Map<string, { at: number; pages: ModulePage[] }>();
+
+export const load: LayoutServerLoad = async ({ locals, cookies }) => {
   const now = Date.now();
   if (now - _cache.at > TTL_MS) {
     try {
@@ -45,5 +50,33 @@ export const load: LayoutServerLoad = async ({ locals }) => {
       _cache = { at: now, pages: _cache.pages, branding: _cache.branding };
     }
   }
-  return { user: locals.user, pages: _cache.pages, branding: _cache.branding };
+
+  // Global cog pages for the sidebar (only for logged-in users; permission-filtered).
+  let modulePages: ModulePage[] = [];
+  if (locals.user) {
+    const uiLocale = cookies.get('locale') || '';
+    const ckey = `${locals.user.id}:${uiLocale}`;
+    const hit = _modCache.get(ckey);
+    if (hit && now - hit.at <= TTL_MS) {
+      modulePages = hit.pages;
+    } else {
+      try {
+        const m = await rpc<{ contributions: Array<Record<string, unknown>> }>(
+          'manifest.get',
+          {},
+          authFromUser(locals.user, null, uiLocale)
+        );
+        modulePages = (m.contributions ?? [])
+          .filter(
+            (c) => c.kind === 'page' && (c.scope ?? 'guild') === 'global' && c.nav !== false
+          )
+          .map((c) => ({ key: c.key as string, name: c.name as string, icon: (c.icon as string) ?? null }));
+        _modCache.set(ckey, { at: now, pages: modulePages });
+      } catch {
+        modulePages = hit?.pages ?? [];
+      }
+    }
+  }
+
+  return { user: locals.user, pages: _cache.pages, branding: _cache.branding, modulePages };
 };

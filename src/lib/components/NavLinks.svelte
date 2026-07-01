@@ -4,6 +4,9 @@
 
   export let user: { username: string } | null = null;
   export let navPages: Array<{ slug: string; title: string; visibility: string }> = [];
+  export let modulePages: Array<{ key: string; name: string; icon: string | null }> = [];
+  export let updateAvailable = false;
+  export let cogUpdateCount = 0;
   // Called after a link is clicked (used to close the mobile drawer).
   export let onNavigate: () => void = () => {};
 
@@ -86,8 +89,31 @@
           {:else if n.icon === 'logs'}<line x1="8" y1="6" x2="21" y2="6" /><line x1="8" y1="12" x2="21" y2="12" /><line x1="8" y1="18" x2="21" y2="18" /><line x1="3" y1="6" x2="3.01" y2="6" /><line x1="3" y1="12" x2="3.01" y2="12" /><line x1="3" y1="18" x2="3.01" y2="18" />{/if}
           </svg>
           <span>{$t(n.key)}</span>
+          {#if n.key === 'nav.system' && updateAvailable}
+            <span class="ml-auto inline-flex h-2 w-2 shrink-0 rounded-full bg-amber-500" title="Update verfügbar" aria-label="Update verfügbar"></span>
+          {/if}
+          {#if n.key === 'nav.cogs' && cogUpdateCount > 0}
+            <span class="ml-auto inline-flex h-5 min-w-[1.25rem] shrink-0 items-center justify-center rounded-full bg-amber-500 px-1.5 text-xs font-medium text-white" title="Cog-Updates" aria-label="Cog-Updates">{cogUpdateCount}</span>
+          {/if}
         </a>
       {/each}
+
+      {#if modulePages.length}
+        <div class="mt-3">
+          <p class="px-3 pb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground/70">
+            {$t('nav.module_sites')}
+          </p>
+          {#each modulePages as mp (mp.key)}
+            {@const mhref = `/modules/${encodeURIComponent(mp.key)}`}
+            <a href={mhref} class={cls(mhref, path)} aria-current={isActive(mhref, path) ? 'page' : undefined} on:click={onNavigate}>
+              <svg class="h-4 w-4 shrink-0" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" />
+              </svg>
+              <span>{mp.name}</span>
+            </a>
+          {/each}
+        </div>
+      {/if}
     {/if}
   </div>
 

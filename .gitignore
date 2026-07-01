@@ -12,3 +12,5 @@ vite.config.ts.timestamp-*
 deploy/sync.config
 mdtest.mts
 mdtest2.mts
+.update.log
+.update-check.json

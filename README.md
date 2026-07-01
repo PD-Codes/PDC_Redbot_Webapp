@@ -44,6 +44,17 @@ Optional: install **`pdc_webdashboard_stats`** (same repo) to power the `/stats`
 - After login: **server overview**, per-guild bot settings, embedded **cog widgets,
   panels & lists** – one **module-with-tabs** per cog (create/view/edit/delete, e.g.
   reaction roles, WoW profiles).
+- **Cog pages** (`@dashboard_page`): cogs can register full standalone pages with a
+  declarative component tree (headings, text, tables, charts, grids) and optional
+  **server-driven controls** (dropdowns). Global pages appear under the
+  **Module (Cog) Sites** menu; guild-scoped pages as a button on the server page.
+- **Automatic update check** (`/system` + Settings): a server-side scheduler checks the
+  web app's GitHub version on a configurable interval (off / 1h / 2h / 4h / 8h / 16h / 24h).
+  An **"update available" badge** shows on the *System* menu entry and page.
+- **Automatic cog-update check + alerts** (Settings): the companion cog periodically
+  checks installed cogs for updates (configurable interval); a **count badge** shows on
+  the *Cogs* menu entry, and the bot can **DM the owner** on available cog updates or when
+  memory usage crosses a configurable threshold.
 - **Cog management** (`/cogs`): load/unload/**reload** cogs, **Downloader** (collapsible
   repos, **update check + per-cog "Update"**), **Slash** (grouped by cog, per-command/
   per-cog toggle incl. **disabled** commands, sync), **Global** (per-cog owner panels as tabs).

@@ -99,6 +99,6 @@
   $: rebuild(labels, datasets, stacked, area);
 </script>
 
-<div class="relative h-[320px] w-full">
+<div class="relative h-full w-full">
   <canvas bind:this={canvas}></canvas>
 </div>

@@ -1,6 +1,7 @@
 <script lang="ts">
   import Card from '$lib/components/ui/Card.svelte';
   import { invalidateAll } from '$app/navigation';
+  import { onMount } from 'svelte';
   import { t } from '$lib/i18n';
   import type { SystemInfo } from './+page.server';
 
@@ -15,6 +16,19 @@
   };
 
   let refreshing = false;
+
+  // Result of the automatic (scheduled) update check, for the badge.
+  let autoUpdate: { available: boolean; current?: string; latest?: string } = { available: false };
+  onMount(async () => {
+    try {
+      const r = await fetch('/api/update/config');
+      if (!r.ok) return;
+      const j = await r.json();
+      if (j.last) autoUpdate = { available: !!j.last.available, current: j.last.current, latest: j.last.latest };
+    } catch {
+      /* ignore */
+    }
+  });
 
   // Update-Check (nur Pruefung, ohne Self-Update auszufuehren).
   let checking = false;
@@ -257,7 +271,14 @@
 
     <!-- GitHub-Updater -->
     <Card class="p-5">
-      <h2 class="mb-1 text-base font-semibold">{$t('system.update_title')}</h2>
+      <div class="mb-1 flex items-center gap-2">
+        <h2 class="text-base font-semibold">{$t('system.update_title')}</h2>
+        {#if autoUpdate.available}
+          <span class="rounded-full bg-amber-500/15 px-2 py-0.5 text-xs font-medium text-amber-500">
+            ⬆ {$t('system.update_available', { current: autoUpdate.current ?? data.version, latest: autoUpdate.latest ?? '' })}
+          </span>
+        {/if}
+      </div>
       <p class="mb-3 text-sm text-muted-foreground">{$t('system.update_desc')}</p>
 
       <!-- Update-Pruefung (ohne Self-Update) -->
