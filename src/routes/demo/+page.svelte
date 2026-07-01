@@ -113,7 +113,7 @@
       <div class="space-y-4">
         <div class="flex items-center justify-between">
           <label class="text-sm font-medium" for="demo-enabled">Aktiviert</label>
-          <input id="demo-enabled" type="checkbox" bind:checked={enabled} class="h-5 w-9 accent-primary" />
+          <input id="demo-enabled" type="checkbox" bind:checked={enabled} class="chb-main" />
         </div>
         <div class="space-y-1.5">
           <label class="text-sm font-medium" for="demo-msg">Nachricht</label>

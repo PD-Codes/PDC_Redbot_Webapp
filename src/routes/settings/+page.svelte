@@ -190,8 +190,8 @@
         <button type="button" class="rounded-md bg-primary px-4 py-1.5 text-sm font-medium text-primary-foreground disabled:opacity-50" disabled={busy === 'gpref'} on:click={() => setGlobal('prefixes', gPrefixes, 'gpref')}>{$t('common.save')}</button>
       </div>
       <div class="flex flex-wrap gap-6">
-        <label class="flex items-center gap-2 text-sm"><input type="checkbox" bind:checked={gEmbeds} on:change={() => setGlobal('embeds', gEmbeds, 'gemb')} class="accent-primary" /> {$t('settings.use_embeds')}</label>
-        <label class="flex items-center gap-2 text-sm"><input type="checkbox" bind:checked={gFuzzy} on:change={() => setGlobal('fuzzy', gFuzzy, 'gfuz')} class="accent-primary" /> {$t('settings.fuzzy_search')}</label>
+        <label class="flex items-center gap-2 text-sm"><input type="checkbox" bind:checked={gEmbeds} on:change={() => setGlobal('embeds', gEmbeds, 'gemb')} class="chb-main" /> {$t('settings.use_embeds')}</label>
+        <label class="flex items-center gap-2 text-sm"><input type="checkbox" bind:checked={gFuzzy} on:change={() => setGlobal('fuzzy', gFuzzy, 'gfuz')} class="chb-main" /> {$t('settings.fuzzy_search')}</label>
       </div>
     </Card>
 
@@ -270,7 +270,7 @@
           </select>
         </label>
         <label class="flex items-center gap-2 text-sm">
-          <input type="checkbox" bind:checked={alertsDm} on:change={saveMonitor} class="accent-primary" />
+          <input type="checkbox" bind:checked={alertsDm} on:change={saveMonitor} class="chb-main" />
           {$t('settings.alerts_dm')}
         </label>
         <label class="flex flex-col gap-1 text-sm">

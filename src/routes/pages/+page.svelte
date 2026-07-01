@@ -100,7 +100,7 @@
           <input bind:value={slug} placeholder={$t('pages.field_slug')} class="w-40 rounded-md border border-input bg-background px-3 py-1.5 text-sm" />
         </div>
         <div class="flex flex-wrap items-center gap-4">
-          <label class="flex items-center gap-1.5 text-sm"><input type="checkbox" bind:checked={nav} class="accent-primary" /> {$t('pages.in_navigation')}</label>
+          <label class="flex items-center gap-1.5 text-sm"><input type="checkbox" bind:checked={nav} class="chb-main" /> {$t('pages.in_navigation')}</label>
           <label class="flex items-center gap-1.5 text-sm">
             {$t('pages.visibility')}
             <select bind:value={visibility} class="rounded-md border border-input bg-background px-2 py-1 text-sm">

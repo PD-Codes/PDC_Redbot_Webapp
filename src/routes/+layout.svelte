@@ -125,8 +125,8 @@
 
 <CommandPalette user={data.user} pages={data.pages ?? []} />
 
-<div class="flex min-h-screen">
-  <aside class="hidden w-60 shrink-0 border-r border-border bg-card/40 p-4 md:block">
+<div class="flex h-screen overflow-hidden">
+  <aside class="hidden w-60 shrink-0 overflow-y-auto border-r border-border bg-card/40 p-4 md:block">
     <div class="mb-6 flex items-center gap-2 px-2">
       {#if brandIcon}
         <img src={brandIcon} alt="" class="h-6 w-6 rounded-md object-cover" />
@@ -161,7 +161,7 @@
     </aside>
   {/if}
 
-  <div class="flex flex-1 flex-col">
+  <div class="flex min-w-0 flex-1 flex-col overflow-hidden">
     <header class="flex items-center justify-between border-b border-border px-6 py-3">
       <div class="flex items-center gap-2 md:hidden">
         <button
@@ -203,7 +203,7 @@
         {/if}
       </div>
     </header>
-    <main class="flex-1 p-6">
+    <main class="min-h-0 flex-1 overflow-y-auto p-6">
       <slot />
     </main>
   </div>

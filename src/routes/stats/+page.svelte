@@ -311,7 +311,7 @@
         {/if}
       </label>
       <label class="flex items-center gap-1.5 text-sm text-muted-foreground">
-        <input type="checkbox" bind:checked={auto} class="accent-primary" />
+        <input type="checkbox" bind:checked={auto} class="chb-main" />
         {$t('stats.auto_refresh')}
       </label>
       {#if result && hasCsv(section)}

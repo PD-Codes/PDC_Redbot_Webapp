@@ -176,7 +176,7 @@
                         <div class="space-y-1">
                           <label class="text-xs font-medium" for={'e_' + f.key}>{f.label}</label>
                           {#if f.type === 'switch'}
-                            <input id={'e_' + f.key} type="checkbox" bind:checked={editValues[f.key]} class="h-5 w-9 accent-primary" />
+                            <input id={'e_' + f.key} type="checkbox" bind:checked={editValues[f.key]} class="chb-main" />
                           {:else if f.type === 'number'}
                             <input id={'e_' + f.key} type="number" min={f.min} max={f.max} bind:value={editValues[f.key]}
                               class="w-full rounded-md border border-input bg-background p-2 text-sm" />

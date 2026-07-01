@@ -116,7 +116,7 @@
         <div class="space-y-1.5">
           <label class="text-sm font-medium" for={f.key}>{f.label}</label>
           {#if f.type === 'switch'}
-            <input id={f.key} type="checkbox" bind:checked={values[f.key]} class="h-5 w-9 accent-primary" />
+            <input id={f.key} type="checkbox" bind:checked={values[f.key]} class="chb-main" />
           {:else if f.type === 'textarea'}
             <textarea id={f.key} bind:this={taRefs[f.key]} bind:value={values[f.key]} maxlength={f.max_length}
               class="w-full rounded-md border border-input bg-background p-2 text-sm" rows="3"></textarea>
