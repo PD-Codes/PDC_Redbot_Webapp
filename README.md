@@ -20,6 +20,21 @@ cd PDC_Redbot_Webapp
 
 Architecture details: `PDC_Redbot_Cogs/pdc_webdashboard/ARCHITECTURE.md`.
 
+## Requirements — companion cog
+
+The web app talks to the bot through the **`pdc_webdashboard`** cog (the RPC gateway).
+Without it the dashboard has nothing to connect to. Install it on the bot from the
+**[PDC_Redbot_Cogs](https://github.com/PD-Codes/PDC_Redbot_Cogs)** repo:
+
+```
+[p]repo add pdc-cogs https://github.com/PD-Codes/PDC_Redbot_Cogs
+[p]cog install pdc-cogs pdc_webdashboard
+[p]load pdc_webdashboard
+[p]pdcdashboard token          # copy the token into the web app's .env (GATEWAY_TOKEN)
+```
+
+Optional: install **`pdc_webdashboard_stats`** (same repo) to power the `/stats` page.
+
 ## Features
 
 - Public landing/overview + **command list** (no login; grouped by module, with a **category dropdown filter** — All / Admin / Moderator / Setup / User, auto-detected from each command's permission level — to show only one category at a time). The overview shows the bot's

@@ -125,7 +125,7 @@
   "docs_integration.intro": "So trägt ein beliebiger Red-Cog Widgets und Panels zu diesem Dashboard bei – optional (nur wenn das Dashboard geladen ist) und parallel zum AAA3A-Dashboard.",
   "docs_integration.principles_title": "Grundprinzipien",
   "docs_integration.principle_1": "<b>Keine harte Abhängigkeit</b> – ohne <code>pdc_webdashboard</code> werden die Decorators zu No-ops.",
-  "docs_integration.principle_2": "<b>Opt-in zur Laufzeit</b> – Integration nur, wenn der <code>WebDashboard</code>-Cog geladen ist.",
+  "docs_integration.principle_2": "<b>Opt-in zur Laufzeit</b> – Integration nur, wenn der <code>pdc_webdashboard</code>-Cog geladen ist.",
   "docs_integration.principle_3": "<b>AAA3A-kompatibel</b> – beide Dashboards dürfen gleichzeitig laufen.",
   "docs_integration.principle_4": "<b>Nur deklarative Schemas</b> – kein rohes HTML, daher keine XSS-Fläche.",
   "docs_integration.step1_title": "1 · Helfer einbinden",

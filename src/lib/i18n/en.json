@@ -125,7 +125,7 @@
   "docs_integration.intro": "How any Red cog contributes widgets and panels to this dashboard – optional (only when the dashboard is loaded) and alongside the AAA3A dashboard.",
   "docs_integration.principles_title": "Core principles",
   "docs_integration.principle_1": "<b>No hard dependency</b> – without <code>pdc_webdashboard</code> the decorators become no-ops.",
-  "docs_integration.principle_2": "<b>Opt-in at runtime</b> – integration only when the <code>WebDashboard</code> cog is loaded.",
+  "docs_integration.principle_2": "<b>Opt-in at runtime</b> – integration only when the <code>pdc_webdashboard</code> cog is loaded.",
   "docs_integration.principle_3": "<b>AAA3A-compatible</b> – both dashboards may run at the same time.",
   "docs_integration.principle_4": "<b>Declarative schemas only</b> – no raw HTML, hence no XSS surface.",
   "docs_integration.step1_title": "1 · Add the helpers",
