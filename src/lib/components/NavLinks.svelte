@@ -8,9 +8,9 @@
   export let onNavigate: () => void = () => {};
 
   // External links (open in a new tab).
-  const URL_DOCS = 'https://github.com/pd-codes/PDC_Redbot_Webapp/wiki';
-  const URL_GH_DASHBOARD = 'https://github.com/pd-codes/PDC_Redbot_Webapp';
-  const URL_GH_COGS = 'https://github.com/pd-codes/PDC_Redbot_Cogs';
+  const URL_DOCS = 'https://github.com/PD-Codes/PDC_Redbot_Webapp/wiki';
+  const URL_GH_DASHBOARD = 'https://github.com/PD-Codes/PDC_Redbot_Webapp';
+  const URL_GH_COGS = 'https://github.com/PD-Codes/PDC_Redbot_Cogs';
 
   const publicNav = [
     { href: '/', key: 'nav.overview', icon: 'home' },

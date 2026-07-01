@@ -1,17 +1,17 @@
 [Unit]
-Description=DKS Redbot WebApp (SvelteKit/adapter-node)
+Description=PDC Redbot WebApp (SvelteKit/adapter-node)
 After=network.target
 
 [Service]
 Type=simple
 # Pfade ggf. anpassen:
-WorkingDirectory=/opt/dks/redbot-dks-dashboard
-EnvironmentFile=/opt/dks/redbot-dks-dashboard/.env
+WorkingDirectory=/opt/pdc/pdc-redbot-webapp
+EnvironmentFile=/opt/pdc/pdc-redbot-webapp/.env
 ExecStart=/usr/bin/node build
 Restart=on-failure
 RestartSec=5
-User=dks
-Group=dks
+User=pdc
+Group=pdc
 
 # Härtung
 NoNewPrivileges=true

@@ -5,16 +5,16 @@ Counterpart to the companion cog `pdc_webdashboard` (repo `PDC_Redbot_Cogs`).
 
 ![Screenshot: PDC Redbot Webapp dashboard landing page](https://cdn.domekologe.eu/d6c3daa9-2e80-4cdb-8191-5c700b811e2e/0779ae9a-104a-46cd-a2cb-dc9d0c678485/7ebdc3a3-4e9e-4ca6-a8ec-4d2ca280a14d.png)
 
-> 📖 **Full documentation:** [PDC_Redbot_Webapp Wiki](https://github.com/pd-codes/PDC_Redbot_Webapp/wiki) (English & Deutsch)
+> 📖 **Full documentation:** [PDC_Redbot_Webapp Wiki](https://github.com/PD-Codes/PDC_Redbot_Webapp/wiki) (English & Deutsch)
 
-- **Repository:** https://github.com/pd-codes/PDC_Redbot_Webapp
+- **Repository:** https://github.com/PD-Codes/PDC_Redbot_Webapp
 - **Stack:** SvelteKit + TypeScript + TailwindCSS (shadcn-svelte tokens), adapter-node, Chart.js
 - **Auth:** Discord OAuth2 (login in the SvelteKit server / BFF)
 - **Transport to the bot:** JSON-RPC 2.0 via the cog's gateway (HTTP + WebSocket)
 - **Languages:** German & English (switch in the top-right, fully translated UI)
 
 ```bash
-git clone https://github.com/pd-codes/PDC_Redbot_Webapp.git
+git clone https://github.com/PD-Codes/PDC_Redbot_Webapp.git
 cd PDC_Redbot_Webapp
 ```
 
@@ -122,22 +122,22 @@ node -r dotenv/config build      # starts adapter-node (default port 3000)
 
 ### systemd
 ```ini
-# /etc/systemd/system/dks-dashboard.service
+# /etc/systemd/system/pdc-redbot-webapp.service
 [Unit]
 Description=PDC Redbot Webapp
 After=network.target
 [Service]
-WorkingDirectory=/opt/dks/redbot-dks-dashboard
-EnvironmentFile=/opt/dks/redbot-dks-dashboard/.env
+WorkingDirectory=/opt/pdc/pdc-redbot-webapp
+EnvironmentFile=/opt/pdc/pdc-redbot-webapp/.env
 ExecStart=/usr/bin/node build
 Restart=on-failure
-User=dks
+User=pdc
 [Install]
 WantedBy=multi-user.target
 ```
 ```bash
-sudo systemctl daemon-reload && sudo systemctl enable --now dks-dashboard
-journalctl -u dks-dashboard -f
+sudo systemctl daemon-reload && sudo systemctl enable --now pdc-redbot-webapp
+journalctl -u pdc-redbot-webapp -f
 ```
 
 ### Docker

@@ -4,7 +4,15 @@
   import { t } from '$lib/i18n';
   import type { SystemInfo } from './+page.server';
 
-  export let data: { isOwner: boolean; info: SystemInfo | null; online: boolean; version: string };
+  export let data: {
+    isOwner: boolean;
+    info: SystemInfo | null;
+    online: boolean;
+    version: string;
+    legacyInstall: boolean;
+    serviceName: string;
+    runUser: string;
+  };
 
   let refreshing = false;
 
@@ -231,6 +239,22 @@
       </div>
     </Card>
 
+    <!-- Migrations-Empfehlung: neue Repos & Cogs verwenden -->
+    <Card class="border-amber-500/40 bg-amber-500/5 p-5">
+      <h2 class="mb-1 text-base font-semibold">{$t('system.migrate_title')}</h2>
+      <p class="mb-3 text-sm text-muted-foreground">{$t('system.migrate_desc')}</p>
+      {#if data.legacyInstall}
+        <p class="mb-3 text-sm text-amber-600 dark:text-amber-400">
+          &#9888; {$t('system.migrate_legacy', { service: data.serviceName, user: data.runUser || 'dks' })}
+        </p>
+      {/if}
+      <pre class="overflow-auto rounded-md border border-border bg-background p-3 text-xs leading-relaxed text-muted-foreground whitespace-pre-wrap">Web-App: https://github.com/PD-Codes/PDC_Redbot_Webapp
+[p]repo add pdc-cogs https://github.com/PD-Codes/PDC_Redbot_Cogs
+[p]repo add pdc-game-cogs https://github.com/PD-Codes/PDC_Redbot_Game_Cogs
+[p]cog install pdc-cogs &lt;name&gt;
+[p]cog install pdc-game-cogs &lt;name&gt;</pre>
+    </Card>
+
     <!-- GitHub-Updater -->
     <Card class="p-5">
       <h2 class="mb-1 text-base font-semibold">{$t('system.update_title')}</h2>
@@ -262,11 +286,11 @@
           <li class="flex gap-2"><span class="text-foreground">③</span><span>{$t('system.update_req_restart')}</span></li>
         </ul>
         <p class="mt-2 text-xs text-muted-foreground/80">{$t('system.update_req_hint')}</p>
-        <pre class="mt-2 overflow-auto rounded bg-background p-2 text-xs leading-relaxed text-muted-foreground">// /etc/polkit-1/rules.d/49-dks-dashboard.rules
+        <pre class="mt-2 overflow-auto rounded bg-background p-2 text-xs leading-relaxed text-muted-foreground">// /etc/polkit-1/rules.d/49-{data.serviceName}.rules
 polkit.addRule(function(action, subject) {'{'}
   if (action.id == "org.freedesktop.systemd1.manage-units" &&
-      action.lookup("unit") == "dks-dashboard.service" &&
-      subject.user == "dks") {'{'} return polkit.Result.YES; {'}'}
+      action.lookup("unit") == "{data.serviceName}.service" &&
+      subject.user == "{data.runUser || 'pdc'}") {'{'} return polkit.Result.YES; {'}'}
 {'}'});</pre>
       </div>
 
@@ -287,7 +311,7 @@ polkit.addRule(function(action, subject) {'{'}
         <p class="mt-2 text-sm text-destructive">{$t('system.update_failed')}: {updateError}</p>
       {/if}
       {#if updatePhase === 'done' && restartManual}
-        <p class="mt-2 text-sm text-amber-600 dark:text-amber-400">{$t('system.update_restart_manual_hint')} <code class="rounded bg-background px-1">systemctl restart dks-dashboard</code></p>
+        <p class="mt-2 text-sm text-amber-600 dark:text-amber-400">{$t('system.update_restart_manual_hint')} <code class="rounded bg-background px-1">systemctl restart {data.serviceName}</code></p>
       {/if}
 
       {#if updateLog}

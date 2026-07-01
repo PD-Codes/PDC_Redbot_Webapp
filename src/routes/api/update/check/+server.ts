@@ -41,16 +41,22 @@ export const GET: RequestHandler = async ({ locals }) => {
   const current = pkg.version;
   const cwd = process.cwd();
 
-  try {
-    // Aktuellen Stand des Remotes holen (gleiche Branch-Logik wie deploy/update.sh).
-    await exec('git', gitArgs(cwd, ['fetch', '--quiet', '--prune', 'origin']), { cwd });
+  // Source repo to check against. Always the new PDC repo, so a legacy install
+  // (origin still pointing at the old repo) already sees the new version before
+  // deploy/update.sh repoints origin. Read-only: fetches by URL into FETCH_HEAD
+  // and never touches the origin remote.
+  const repoUrl = env.REPO_URL || 'https://github.com/PD-Codes/PDC_Redbot_Webapp';
 
+  try {
     const branch =
       env.DEPLOY_BRANCH ||
       (await exec('git', gitArgs(cwd, ['rev-parse', '--abbrev-ref', 'HEAD']), { cwd })).stdout.trim() ||
       'main';
 
-    const { stdout } = await exec('git', gitArgs(cwd, ['show', `origin/${branch}:package.json`]), { cwd });
+    // Fetch the branch straight from the new repo (does not modify origin).
+    await exec('git', gitArgs(cwd, ['fetch', '--quiet', repoUrl, branch]), { cwd });
+
+    const { stdout } = await exec('git', gitArgs(cwd, ['show', 'FETCH_HEAD:package.json']), { cwd });
     const latest: string = JSON.parse(stdout).version ?? '';
 
     if (!latest) return json({ available: false, current, error: 'Remote-Version nicht gefunden' });

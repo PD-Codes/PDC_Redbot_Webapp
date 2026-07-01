@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# DKS Redbot WebApp – Update/Redeploy: Code holen, neu bauen, Dienst neu starten.
+# PDC Redbot WebApp – Update/Redeploy: Code holen, neu bauen, Dienst neu starten.
 #
 # Funktioniert in zwei Modi:
 #   1) Als root:               sudo bash deploy/update.sh
@@ -17,8 +17,54 @@ set -euo pipefail
 trap 'echo "===UPDATE_ERROR==="' ERR
 
 APP_DIR="${APP_DIR:-$(cd "$(dirname "$0")/.." && pwd)}"
-SERVICE_USER="${SERVICE_USER:-dks}"
-SERVICE_NAME="${SERVICE_NAME:-dks-dashboard}"
+
+# Source repo the update should pull from. The old install fetched from the
+# legacy repo; point it at the new PDC WebApp repo so existing servers migrate
+# on their next update. Override with REPO_URL=... if needed.
+REPO_URL_DEFAULT="https://github.com/PD-Codes/PDC_Redbot_Webapp"
+REPO_URL="${REPO_URL:-$REPO_URL_DEFAULT}"
+
+# --- Service/user auto-detection (backwards compatible) ---------------------
+# systemd units cannot simply be renamed, so an old install keeps running under
+# the legacy unit "dks-dashboard" (user "dks") while new installs use
+# "pdc-redbot-webapp" (user "pdc"). Detect whichever is actually present and
+# use it. Explicit SERVICE_NAME / SERVICE_USER env vars always win.
+NEW_SERVICE="pdc-redbot-webapp"
+OLD_SERVICE="dks-dashboard"
+LEGACY_INSTALL=0
+
+# Pick a unit: prefer an active one, then any loaded one, preferring the new name.
+pick_service() {
+  local s
+  for s in "$NEW_SERVICE" "$OLD_SERVICE"; do
+    systemctl is-active --quiet "$s" 2>/dev/null && { echo "$s"; return; }
+  done
+  for s in "$NEW_SERVICE" "$OLD_SERVICE"; do
+    systemctl cat "$s" >/dev/null 2>&1 && { echo "$s"; return; }
+  done
+  echo "$NEW_SERVICE"
+}
+
+if [ -z "${SERVICE_NAME:-}" ]; then
+  SERVICE_NAME="$(pick_service)"
+fi
+[ "$SERVICE_NAME" = "$OLD_SERVICE" ] && LEGACY_INSTALL=1
+
+if [ -z "${SERVICE_USER:-}" ]; then
+  # Prefer the User= from the actual unit, else map by service name.
+  SERVICE_USER="$(systemctl show -p User --value "${SERVICE_NAME}.service" 2>/dev/null || true)"
+  if [ -z "$SERVICE_USER" ]; then
+    case "$SERVICE_NAME" in
+      "$OLD_SERVICE") SERVICE_USER="dks" ;;
+      *)              SERVICE_USER="pdc" ;;
+    esac
+  fi
+fi
+
+echo "==> Dienst: ${SERVICE_NAME} (User: ${SERVICE_USER})"
+if [ "$LEGACY_INSTALL" -eq 1 ]; then
+  echo "==> Legacy-Installation erkannt ('${OLD_SERVICE}') - Quelle wird auf das neue Repo umgestellt."
+fi
 
 cd "$APP_DIR"
 
@@ -39,17 +85,30 @@ as_service() {
 }
 
 # git ohne "dubious ownership"-Abbruch (egal welcher User das Repo besitzt) und ohne
-# die globalen ignore/attributes-Dateien zu lesen – sonst gibt es "Permission denied"-
+# die globalen ignore/attributes-Dateien zu lesen - sonst gibt es "Permission denied"-
 # Warnungen, wenn der Dienst-User nicht an ~/.config/git herankommt. /dev/null ist immer
 # lesbar und leer, daher verschwinden die Warnungen ohne Funktionsverlust.
 GIT=(git -c "safe.directory=$APP_DIR" -c "safe.directory=*" \
      -c "core.excludesFile=/dev/null" -c "core.attributesFile=/dev/null")
+
+# Normalise a git URL for comparison (drop trailing ".git" and slash).
+norm_url() { printf '%s' "$1" | sed -E 's#\.git$##; s#/$##'; }
 
 # Aktuellen Stand holen (nur wenn es ein Git-Repo ist).
 # Ein Deploy-Checkout soll GitHub exakt spiegeln, daher fetch + hard reset
 # statt "pull": so blockieren lokale Aenderungen an getrackten Dateien das
 # Update NIE (untrackte Dateien wie .env bleiben unangetastet).
 if [ -d .git ]; then
+  # Ensure origin points at the new PDC repo (migrates legacy checkouts).
+  CUR_ORIGIN="$(as_service "${GIT[@]}" remote get-url origin 2>/dev/null || echo '')"
+  if [ -n "$REPO_URL" ] && [ "$(norm_url "$CUR_ORIGIN")" != "$(norm_url "$REPO_URL")" ]; then
+    echo "==> origin umstellen: ${CUR_ORIGIN:-<keins>} -> ${REPO_URL}"
+    if [ -n "$CUR_ORIGIN" ]; then
+      as_service "${GIT[@]}" remote set-url origin "$REPO_URL"
+    else
+      as_service "${GIT[@]}" remote add origin "$REPO_URL"
+    fi
+  fi
   echo "==> git fetch"
   as_service "${GIT[@]}" fetch --prune origin
   BRANCH="${DEPLOY_BRANCH:-$(as_service "${GIT[@]}" rev-parse --abbrev-ref HEAD 2>/dev/null || echo main)}"
@@ -94,4 +153,20 @@ else
   echo "!!         subject.user == \"${CUR_USER}\") { return polkit.Result.YES; }"
   echo "!!   });"
   echo "!! Oder starte manuell:  systemctl restart ${SERVICE_NAME}"
+fi
+
+# --- Migration recommendation (shown in the update log / web panel) ----------
+# Emit a machine-readable marker so the /system page can surface a hint, plus a
+# human-readable recommendation to move to the new repos and cogs.
+echo "===MIGRATION_RECOMMENDED==="
+[ "$LEGACY_INSTALL" -eq 1 ] && echo "===LEGACY_INSTALL==="
+echo "Empfehlung: Auf die neuen Repos umstellen und die neuen Cogs verwenden:"
+echo "  Web-App : https://github.com/PD-Codes/PDC_Redbot_Webapp"
+echo "  Cogs    : [p]repo add pdc-cogs https://github.com/PD-Codes/PDC_Redbot_Cogs"
+echo "  Game    : [p]repo add pdc-game-cogs https://github.com/PD-Codes/PDC_Redbot_Game_Cogs"
+echo "  Danach : [p]cog install pdc-cogs <name>   bzw.   [p]cog install pdc-game-cogs <name>"
+if [ "$LEGACY_INSTALL" -eq 1 ]; then
+  echo "  Hinweis: Diese Installation laeuft noch als Legacy-Dienst '${OLD_SERVICE}' (User '${SERVICE_USER}')."
+  echo "           Sie funktioniert unveraendert weiter; fuer den vollstaendigen Wechsel auf"
+  echo "           '${NEW_SERVICE}' siehe deploy/README.md (Abschnitt Migration)."
 fi

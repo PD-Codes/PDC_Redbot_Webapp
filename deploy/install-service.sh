@@ -1,19 +1,19 @@
 #!/usr/bin/env bash
 #
-# DKS Redbot WebApp – Linux-Service per Copy/Paste einrichten.
+# PDC Redbot WebApp – Linux-Service per Copy/Paste einrichten.
 #
 # Nutzung (auf dem Server, im Projektordner ausführen):
 #   sudo bash deploy/install-service.sh
 #
 # Anpassbar über Umgebungsvariablen, z. B.:
-#   APP_DIR=/opt/dks/redbot-dks-dashboard SERVICE_USER=dks sudo -E bash deploy/install-service.sh
+#   APP_DIR=/opt/pdc/pdc-redbot-webapp SERVICE_USER=pdc sudo -E bash deploy/install-service.sh
 #
 set -euo pipefail
 
 # ---- Konfiguration (Defaults) ----------------------------------------------
 APP_DIR="${APP_DIR:-$(cd "$(dirname "$0")/.." && pwd)}"
-SERVICE_USER="${SERVICE_USER:-dks}"
-SERVICE_NAME="${SERVICE_NAME:-dks-dashboard}"
+SERVICE_USER="${SERVICE_USER:-pdc}"
+SERVICE_NAME="${SERVICE_NAME:-pdc-redbot-webapp}"
 
 echo "==> App-Verzeichnis : $APP_DIR"
 echo "==> Service-Name    : $SERVICE_NAME"
@@ -64,7 +64,7 @@ UNIT="/etc/systemd/system/${SERVICE_NAME}.service"
 echo "==> Schreibe $UNIT"
 cat > "$UNIT" <<EOF
 [Unit]
-Description=DKS Redbot WebApp (SvelteKit/adapter-node)
+Description=PDC Redbot WebApp (SvelteKit/adapter-node)
 After=network.target
 
 [Service]

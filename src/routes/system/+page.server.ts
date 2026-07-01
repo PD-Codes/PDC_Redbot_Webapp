@@ -1,4 +1,5 @@
 import { redirect } from '@sveltejs/kit';
+import os from 'node:os';
 import type { PageServerLoad } from './$types';
 import { rpc, authFromUser } from '$lib/server/rpc';
 import pkg from '../../../package.json';
@@ -41,5 +42,17 @@ export const load: PageServerLoad = async ({ locals }) => {
       online = false;
     }
   }
-  return { isOwner, info, online, version: pkg.version };
+  // Detect a legacy install: the node server runs as the systemd service user,
+  // so an old deployment still reports user "dks" (unit "dks-dashboard").
+  // Used to recommend switching to the new PDC service/repos/cogs.
+  let runUser = '';
+  try {
+    runUser = os.userInfo().username;
+  } catch {
+    /* ignore */
+  }
+  const legacyInstall = runUser === 'dks';
+  const serviceName = legacyInstall ? 'dks-dashboard' : 'pdc-redbot-webapp';
+
+  return { isOwner, info, online, version: pkg.version, legacyInstall, serviceName, runUser };
 };

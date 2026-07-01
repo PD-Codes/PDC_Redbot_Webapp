@@ -3,18 +3,18 @@
 
 # --- SSH-Zugang zum Server ---
 SSH_HOST="dein.server.de"      # IP oder Hostname
-SSH_USER="dks"                 # SSH-Benutzer
+SSH_USER="pdc"                 # SSH-Benutzer
 SSH_PORT="22"                  # Standard 22
 SSH_KEY=""                     # optional: Pfad zum privaten Key, z. B. ~/.ssh/id_ed25519
                                # leer lassen = Passwort/Default-Key
 
 # --- Zielpfade auf dem Server ---
-REMOTE_APP_DIR="/opt/dks/redbot-dks-dashboard"   # Web-App (wie im Deploy)
-REMOTE_COGS_DIR="/home/dks/dks-cogs"             # Cog-Repo-Pfad auf dem Server
+REMOTE_APP_DIR="/opt/pdc/pdc-redbot-webapp"   # Web-App (wie im Deploy)
+REMOTE_COGS_DIR="/home/pdc/pdc-cogs"             # Cog-Repo-Pfad auf dem Server
                                                  # (der Ordner, den Red via [p]addpath kennt)
 
 # --- Lokale Quellpfade (optional überschreiben) ---
-# Standard: Web-App = dieser Repo-Ordner; Cogs = ../DKS_Redcogs daneben.
+# Standard: Web-App = dieser Repo-Ordner; Cogs = ../PDC_Redbot_Cogs daneben.
 # In WSL liegen Windows-Laufwerke unter /mnt/, z. B.:
-# LOCAL_APP_DIR="/mnt/w/_Git/DKS_Redbot_WebApp"
-# LOCAL_COGS_DIR="/mnt/w/_Git/DKS_Redcogs"
+# LOCAL_APP_DIR="/mnt/w/_Git/PDC_Redbot_Webapp"
+# LOCAL_COGS_DIR="/mnt/w/_Git/PDC_Redbot_Cogs"

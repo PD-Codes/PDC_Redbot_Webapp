@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# DKS – Sync vom lokalen Windows-PC auf den Linux-Server (rsync über SSH).
+# PDC – Sync vom lokalen Windows-PC auf den Linux-Server (rsync über SSH).
 #
 # Spiegelt BEIDE Repos auf den Server und baut/startet anschließend die Web-App neu.
 # Cog-Änderungen werden übertragen, müssen aber im Discord per [p]reload aktiviert werden
@@ -29,7 +29,7 @@ fi
 
 # --- Defaults / Ableitungen ------------------------------------------------- #
 LOCAL_APP_DIR="${LOCAL_APP_DIR:-$(cd "$SCRIPT_DIR/.." && pwd)}"
-LOCAL_COGS_DIR="${LOCAL_COGS_DIR:-$(cd "$SCRIPT_DIR/../../DKS_Redcogs" 2>/dev/null && pwd || true)}"
+LOCAL_COGS_DIR="${LOCAL_COGS_DIR:-$(cd "$SCRIPT_DIR/../../PDC_Redbot_Cogs" 2>/dev/null && pwd || true)}"
 SSH_PORT="${SSH_PORT:-22}"
 SSH_KEY="${SSH_KEY:-}"
 

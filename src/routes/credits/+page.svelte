@@ -2,7 +2,7 @@
   import Card from '$lib/components/ui/Card.svelte';
   import { t } from '$lib/i18n';
 
-  const base = 'https://github.com/pd-codes/PDC_Redbot_Webapp/blob/main/documents';
+  const base = 'https://github.com/PD-Codes/PDC_Redbot_Webapp/blob/main/documents';
   const policies = [
     { label: 'Privacy Policy', href: `${base}/Privacy%20Policy.md` },
     { label: 'Cookie Policy', href: `${base}/Cookie%20Policy.md` },

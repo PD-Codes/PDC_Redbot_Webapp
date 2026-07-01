@@ -10,6 +10,8 @@ const LOG_FILE = path.join(process.cwd(), '.update.log');
 const DONE_MARKER = '===UPDATE_DONE===';
 const ERROR_MARKER = '===UPDATE_ERROR===';
 const RESTART_SKIPPED_MARKER = '===RESTART_SKIPPED===';
+const MIGRATION_MARKER = '===MIGRATION_RECOMMENDED===';
+const LEGACY_MARKER = '===LEGACY_INSTALL===';
 
 // Eindeutige ID dieses Server-Prozesses. Ändert sich bei jedem (Neu-)Start →
 // die /system-Seite erkennt daran zuverlässig, dass der Dienst neu gestartet ist,
@@ -42,6 +44,8 @@ export const GET: RequestHandler = async ({ locals }) => {
     done: log.includes(DONE_MARKER),
     failed: log.includes(ERROR_MARKER),
     restartSkipped: log.includes(RESTART_SKIPPED_MARKER),
+    migrationRecommended: log.includes(MIGRATION_MARKER),
+    legacyInstall: log.includes(LEGACY_MARKER),
     boot: BOOT_ID
   });
 };
@@ -56,7 +60,8 @@ export const POST: RequestHandler = async ({ locals }) => {
       {
         error:
           'Self-Update ist deaktiviert. Setze ENABLE_SELF_UPDATE=true in der .env und erlaube ' +
-          'dem Dienst-User den Service-Neustart (sudoers NOPASSWD für `systemctl restart dks-dashboard`).'
+          'dem Dienst-User den Service-Neustart (sudoers/polkit NOPASSWD für den aktiven Dienst, ' +
+          'z. B. `systemctl restart pdc-redbot-webapp` bzw. Legacy `dks-dashboard`).'
       },
       { status: 400 }
     );
