@@ -1,7 +1,7 @@
 {
   "name": "pdc-redbot-webapp",
-  "version": "0.1.0",
-  "description": "Modernes, modulares Web-Dashboard (Frontend + BFF) für den PDC Red-DiscordBot.",
+  "version": "0.1.1",
+  "description": "Modern, modular Web-Dashboard (Frontend + BFF) for the PDC Red-DiscordBot.",
   "type": "module",
   "scripts": {
     "dev": "vite dev",
