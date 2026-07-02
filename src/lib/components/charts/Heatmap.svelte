@@ -1,12 +1,24 @@
 <script lang="ts">
+  import { locale } from '$lib/i18n';
+
   export let grid: number[][] = [];
   export let peak = 0;
   export let metric = 'messages';
-  export let unit = ''; // z. B. "Nachrichten" oder "Std" – vom Aufrufer übergeben.
+  export let unit = ''; // e.g. "Messages" or "Hours" – provided by the caller.
 
-  // Kurze + volle Wochentags-Labels, Zeile 0 = Montag .. 6 = Sonntag.
-  const weekdays = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
-  const weekdaysFull = ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag', 'Sonntag'];
+  // Weekday labels (row 0 = Monday .. 6 = Sunday), localized to the UI language
+  // (en-US default). 2024-01-01 is a Monday, used as a stable reference week.
+  function weekdayNames(loc: string, style: 'short' | 'long'): string[] {
+    try {
+      const fmt = new Intl.DateTimeFormat(loc, { weekday: style, timeZone: 'UTC' });
+      return Array.from({ length: 7 }, (_, i) => fmt.format(new Date(Date.UTC(2024, 0, 1 + i))));
+    } catch {
+      const en = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+      return en;
+    }
+  }
+  $: weekdays = weekdayNames($locale, 'short');
+  $: weekdaysFull = weekdayNames($locale, 'long');
   const hours = Array.from({ length: 24 }, (_, h) => h);
 
   function alpha(v: number): number {

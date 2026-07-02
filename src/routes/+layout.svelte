@@ -1,10 +1,12 @@
 <script lang="ts">
   import '../app.css';
-  import { onMount } from 'svelte';
+  import { onMount, onDestroy } from 'svelte';
   import { invalidateAll } from '$app/navigation';
   import { setLocale, t, locale } from '$lib/i18n';
   import CommandPalette from '$lib/components/CommandPalette.svelte';
   import NavLinks from '$lib/components/NavLinks.svelte';
+  import Toasts from '$lib/components/Toasts.svelte';
+  import { cogUpdateCount, refreshCogUpdateCount } from '$lib/stores/updates';
   import { page } from '$app/stores';
   export let data: {
     user: { username: string; avatar?: string | null } | null;
@@ -23,14 +25,14 @@
     } | null;
   };
 
-  // Custom Pages in der Navigation: öffentliche immer, private nur eingeloggt.
+  // Custom pages in the navigation: public ones always, private ones only when logged in.
   $: navPages = (data.pages ?? []).filter((p) => p.nav && (p.visibility === 'public' || data.user));
 
-  // Branding-Titel/Icon (Fallback: i18n-App-Titel). Reaktiv, damit ein Speichern sofort greift.
+  // Branding title/icon (fallback: i18n app title). Reactive so saving takes effect immediately.
   $: brandTitle = data.branding?.title?.trim() || $t('app.title');
   $: brandIcon = data.branding?.icon?.trim() || '';
 
-  // Farb-Token (Branding-Farbe → CSS-Variable --primary, HSL).
+  // Color tokens (branding color → CSS variable --primary, HSL).
   const PRIMARY: Record<string, string> = {
     indigo: '243 75% 59%',
     success: '142 71% 45%',
@@ -50,7 +52,7 @@
     const saved = typeof localStorage !== 'undefined' && localStorage.getItem('locale');
     if (saved) setLocale(saved);
     const savedTheme = typeof localStorage !== 'undefined' && localStorage.getItem('theme');
-    // Branding-Theme als Default, solange der Nutzer nicht selbst umgeschaltet hat.
+    // Use the branding theme as default until the user has switched it themselves.
     const effectiveTheme = savedTheme || data.branding?.theme || 'dark';
     if (effectiveTheme === 'light') {
       theme = 'light';
@@ -62,7 +64,7 @@
     applyBranding();
   });
 
-  // Bei Branding-Änderung (nach invalidateAll) Titel/Farbe sofort übernehmen.
+  // Apply title/color immediately when branding changes (after invalidateAll).
   $: if (data.branding) applyBranding();
 
   function toggleTheme() {
@@ -73,19 +75,18 @@
 
   async function onLocaleChange(e: Event) {
     setLocale((e.target as HTMLSelectElement).value);
-    // Server-Loads (z. B. das Cog-Manifest) neu ausführen, damit Modul-Namen/
-    // -Beschreibungen in der neuen Sprache geliefert werden.
+    // Re-run server loads (e.g. the cog manifest) so module names/descriptions
+    // are delivered in the new language.
     await invalidateAll();
   }
 
-  // Mobiles Navigations-Drawer (Hamburger). Schließt automatisch bei Navigation.
+  // Mobile navigation drawer (hamburger). Closes automatically on navigation.
   let mobileNavOpen = false;
   $: if ($page.url.pathname) mobileNavOpen = false;
 
   // "Update available" badge (owner-only). Fed by the automatic update check;
   // /api/update/config is owner-gated, so non-owners simply get no badge.
   let updateAvailable = false;
-  let cogUpdateCount = 0;
   onMount(async () => {
     if (!data.user) return;
     try {
@@ -97,15 +98,63 @@
     } catch {
       /* ignore */
     }
+    // Cog-update badge lives in a shared store so pages (e.g. the cogs page)
+    // can refresh it right after update actions instead of showing stale counts.
+    refreshCogUpdateCount();
+  });
+
+  // ── Gateway offline banner (graceful degradation) ────────────────────
+  // Lightweight liveness poll; shows a friendly banner instead of letting every
+  // page run into hard RPC timeout errors without explanation.
+  let gatewayOffline = false;
+  let healthTimer: ReturnType<typeof setInterval> | null = null;
+  async function checkHealth() {
     try {
-      const r = await fetch('/api/monitor');
-      if (r.ok) {
-        const j = await r.json();
-        cogUpdateCount = Array.isArray(j.last?.cogs) ? j.last.cogs.length : 0;
-      }
+      const r = await fetch('/api/health');
+      const j = await r.json();
+      const nowOffline = !j.ok;
+      // On transition offline -> online refresh data so cached pages recover.
+      if (gatewayOffline && !nowOffline) invalidateAll().catch(() => {});
+      gatewayOffline = nowOffline;
     } catch {
-      /* ignore */
+      gatewayOffline = true;
     }
+  }
+  onMount(() => {
+    if (!data.user) return;
+    checkHealth();
+    healthTimer = setInterval(checkHealth, 30_000);
+  });
+  onDestroy(() => {
+    if (healthTimer) clearInterval(healthTimer);
+  });
+
+  // ── Cross-tab session/state sync ─────────────────────────────────────
+  // Keep locale, theme and login state consistent across open tabs: other tabs
+  // pick up changes via the storage event; login/logout triggers a data refresh.
+  const UID_KEY = 'pdc:uid';
+  function onStorage(e: StorageEvent) {
+    if (e.key === 'locale' && e.newValue) {
+      setLocale(e.newValue);
+      invalidateAll().catch(() => {});
+    } else if (e.key === 'theme' && e.newValue) {
+      theme = e.newValue === 'light' ? 'light' : 'dark';
+      document.documentElement.classList.toggle('dark', theme === 'dark');
+    } else if (e.key === UID_KEY) {
+      // Another tab logged in/out -> re-run loads so this tab reflects it.
+      invalidateAll().catch(() => {});
+    }
+  }
+  onMount(() => {
+    // Publish the current login state so other tabs can detect changes.
+    try {
+      const uid = data.user ? String((data.user as { username: string; id?: string }).username) : '';
+      if (localStorage.getItem(UID_KEY) !== uid) localStorage.setItem(UID_KEY, uid);
+    } catch {
+      /* storage unavailable */
+    }
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
   });
 </script>
 
@@ -135,7 +184,7 @@
       {/if}
       <span class="text-lg font-bold">{brandTitle}</span>
     </div>
-    <NavLinks user={data.user} navPages={navPages} modulePages={data.modulePages ?? []} {updateAvailable} {cogUpdateCount} />
+    <NavLinks user={data.user} navPages={navPages} modulePages={data.modulePages ?? []} {updateAvailable} cogUpdateCount={$cogUpdateCount} />
   </aside>
 
   <!-- Mobile nav drawer -->
@@ -157,7 +206,7 @@
         </div>
         <button type="button" class="rounded-md p-1 text-muted-foreground hover:bg-secondary" aria-label="Close menu" on:click={() => (mobileNavOpen = false)}>✕</button>
       </div>
-      <NavLinks user={data.user} navPages={navPages} modulePages={data.modulePages ?? []} {updateAvailable} {cogUpdateCount} onNavigate={() => (mobileNavOpen = false)} />
+      <NavLinks user={data.user} navPages={navPages} modulePages={data.modulePages ?? []} {updateAvailable} cogUpdateCount={$cogUpdateCount} onNavigate={() => (mobileNavOpen = false)} />
     </aside>
   {/if}
 
@@ -203,8 +252,15 @@
         {/if}
       </div>
     </header>
+    {#if data.user && gatewayOffline}
+      <div class="border-b border-amber-500/40 bg-amber-500/10 px-6 py-2 text-sm text-amber-600 dark:text-amber-400">
+        ⚠ {$t('common.gateway_offline_banner')}
+      </div>
+    {/if}
     <main class="min-h-0 flex-1 overflow-y-auto p-6">
       <slot />
     </main>
   </div>
 </div>
+
+<Toasts />

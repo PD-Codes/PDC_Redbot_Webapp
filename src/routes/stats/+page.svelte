@@ -6,7 +6,7 @@
   import SeriesToggle from '$lib/components/charts/SeriesToggle.svelte';
   import Heatmap from '$lib/components/charts/Heatmap.svelte';
   import { onDestroy } from 'svelte';
-  import { t } from '$lib/i18n';
+  import { t, locale } from '$lib/i18n';
   import type { StatsGuild } from './+page.server';
 
   export let data: { guilds: StatsGuild[] };
@@ -73,16 +73,16 @@
   let error = '';
   let result: any = null;
 
-  // Toggle-Zustand pro Sektion (verstecken/zeigen einzelner Reihen).
+  // Toggle state per section (hide/show individual rows).
   let hidden: Record<string, boolean[]> = {};
 
-  // Damit Reaktivität nicht in eine Endlosschleife läuft, hängen wir den
-  // Fetch nur an die Eingangs-Parameter, nicht an `result`.
+  // To keep reactivity from running into an endless loop, the fetch only
+  // depends on the input parameters, not on `result`.
   let lastKey = '';
   let reqSeq = 0;
 
   async function fetchStats(key: string) {
-    const seq = ++reqSeq; // nur die jeweils NEUESTE Anfrage darf das Ergebnis setzen
+    const seq = ++reqSeq; // only the LATEST request may set the result
     loading = true;
     error = '';
     try {
@@ -121,16 +121,16 @@
     }
   }
 
-  // Reaktiv: nur Eingangs-Parameter triggern.
+  // Reactive: only input parameters trigger a fetch.
   $: requestKey = `${selectedGuild}|${section}|${days}|${memberId}|${channelId}|${heatmapMetric}`;
   $: if (selectedGuild && requestKey !== lastKey) {
     fetchStats(requestKey);
   }
 
-  // Auto-Aktualisierung: alle 10s neu laden, solange aktiv.
-  // WICHTIG: NICHT reaktiv von autoTimer abhängen (sonst löscht/erstellt sich der
-  // Timer endlos selbst und feuert nicht). Daher in einer Funktion gekapselt, die
-  // nur bei Änderung von `auto`/`selectedGuild` neu aufgesetzt wird.
+  // Auto-refresh: reload every 10s while active.
+  // IMPORTANT: do NOT reactively depend on autoTimer (otherwise the timer
+  // endlessly deletes/recreates itself and never fires). Hence wrapped in a
+  // function that is only re-set-up when `auto`/`selectedGuild` change.
   let auto = false;
   let autoTimer: ReturnType<typeof setInterval> | null = null;
   function setupAuto() {
@@ -165,8 +165,13 @@
     return hidden[sec]?.[i] ?? false;
   }
 
-  // ── Formatierung ─────────────────────────────────────────────────────
-  const nf = new Intl.NumberFormat('de-DE');
+  // ── Formatting (follows the UI language, en-US default) ─────────────
+  let nf = new Intl.NumberFormat('en-US');
+  let fmtLocale = 'en-US';
+  $: {
+    fmtLocale = $locale || 'en-US';
+    nf = new Intl.NumberFormat(fmtLocale);
+  }
   function fmt(n: number | null | undefined): string {
     if (n == null) return '–';
     return nf.format(n);
@@ -178,12 +183,12 @@
   function shortDate(iso: string): string {
     const d = new Date(iso);
     if (isNaN(d.getTime())) return iso;
-    return d.toLocaleString('de-DE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+    return d.toLocaleString(fmtLocale, { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
   }
   function readableDate(iso: string): string {
     const d = new Date(iso);
     if (isNaN(d.getTime())) return iso;
-    return d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    return d.toLocaleDateString(fmtLocale, { day: '2-digit', month: '2-digit', year: 'numeric' });
   }
   function guildIconUrl(g: StatsGuild): string | null {
     if (!g.icon) return null;
@@ -246,7 +251,7 @@
     URL.revokeObjectURL(url);
   }
 
-  // Sektionen, die exportierbare Tabellendaten besitzen.
+  // Sections that have exportable table data.
   function hasCsv(s: Section): boolean {
     return ['messages', 'voice', 'leaderboard', 'commands', 'activity', 'invites'].includes(s);
   }

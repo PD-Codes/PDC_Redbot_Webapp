@@ -1,11 +1,13 @@
 <script lang="ts">
   import Card from '$lib/components/ui/Card.svelte';
   import { t } from '$lib/i18n';
+  import { toastError } from '$lib/stores/toasts';
   import type { LogEntry } from './+page.server';
 
-  export let data: { isOwner: boolean; logs: LogEntry[] };
+  export let data: { isOwner: boolean; logs: LogEntry[]; cached?: boolean; online?: boolean };
 
   let logs: LogEntry[] = data.logs ?? [];
+  let cached = !!data.cached;
   let level = '';
   let query = '';
   let busy = false;
@@ -28,7 +30,14 @@
         body: JSON.stringify({ action: 'logs_list', level, query, limit: 500 })
       });
       const j = await res.json();
-      if (!j.error) logs = j.logs ?? [];
+      if (j.error) {
+        toastError($t('logs.refresh_failed') + ': ' + j.error);
+      } else {
+        logs = j.logs ?? [];
+        cached = !!j.cached;
+      }
+    } catch (e) {
+      toastError($t('logs.refresh_failed') + ': ' + (e instanceof Error ? e.message : String(e)));
     } finally {
       busy = false;
     }
@@ -84,6 +93,12 @@
       </div>
     {/if}
   </div>
+
+  {#if data.isOwner && cached}
+    <Card class="border-amber-500/50 p-3">
+      <p class="text-sm text-amber-500">{$t('logs.cached_notice')}</p>
+    </Card>
+  {/if}
 
   {#if !data.isOwner}
     <Card class="p-4"><p class="text-sm text-muted-foreground">{$t('logs.owner_only')}</p></Card>

@@ -3,7 +3,10 @@
   import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
   import ModuleTabs from '$lib/components/ModuleTabs.svelte';
   import { invalidateAll } from '$app/navigation';
+  import { onDestroy } from 'svelte';
   import { t } from '$lib/i18n';
+  import { toastError, toastSuccess } from '$lib/stores/toasts';
+  import { cogUpdateCount, refreshCogUpdateCount } from '$lib/stores/updates';
 
   export let data: {
     cogs: Array<{ name: string; loaded: boolean; has_dashboard: boolean; repo?: string | null }>;
@@ -48,7 +51,7 @@
   let repoUrl = '';
   let repoBranch = '';
 
-  // Diese Cogs sind für das Web-Dashboard zwingend erforderlich → „Erforderlich"-Pill.
+  // These cogs are strictly required for the web dashboard → "Required" pill.
   const REQUIRED_COGS = new Set(['pdc_webdashboard', 'pdc_webdashboard_stats']);
   const isRequired = (name: string) => REQUIRED_COGS.has(name.toLowerCase());
   // Required cogs may be ENABLED freely; only unloading a loaded one is blocked.
@@ -68,6 +71,8 @@
   });
 
   async function post(url: string, body: unknown, label: string): Promise<boolean> {
+    // Idempotency guard: ignore clicks while another action is still running.
+    if (busy) return false;
     busy = label;
     msg = '';
     err = '';
@@ -76,13 +81,15 @@
       const j = await res.json();
       if (j.error) {
         err = j.error;
+        toastError(j.error);
         return false;
       }
       msg = $t('common.done');
       await invalidateAll();
       return true;
     } catch (e) {
-      err = e instanceof Error ? e.message : 'Fehler';
+      err = e instanceof Error ? e.message : $t('common.error');
+      toastError(err);
       return false;
     } finally {
       busy = '';
@@ -90,9 +97,15 @@
   }
 
   async function toggleCog(c: { name: string; loaded: boolean }) {
-    if (isLocked(c)) return;
+    if (isLocked(c) || busy) return;
     if (c.loaded) {
-      await post('/api/cogs', { name: c.name, action: 'unload' }, 'cog:' + c.name);
+      // Guard rail: disabling a module is disruptive – ask first.
+      askConfirm(
+        $t('cogs.confirm_unload_title'),
+        $t('cogs.confirm_unload', { cog: c.name }),
+        $t('cogs.disable'),
+        () => post('/api/cogs', { name: c.name, action: 'unload' }, 'cog:' + c.name)
+      );
       return;
     }
     // Enabling a cog: load it, then reload it so its (slash) commands and dashboard
@@ -106,53 +119,61 @@
       const j = await res.json();
       if (j.error) {
         err = j.error;
+        toastError(j.error);
         return;
       }
       // Reload so newly loaded cogs' app/slash commands show up immediately.
-      await fetch('/api/cogs', { method: 'POST', headers, body: JSON.stringify({ name: c.name, action: 'reload' }) }).catch(() => {});
+      if (!isDashboardCog(c.name)) {
+        await fetch('/api/cogs', { method: 'POST', headers, body: JSON.stringify({ name: c.name, action: 'reload' }) }).catch(() => {});
+      }
       msg = $t('common.done');
       await invalidateAll();
     } catch (e) {
-      err = e instanceof Error ? e.message : 'Fehler';
+      err = e instanceof Error ? e.message : $t('common.error');
+      toastError(err);
     } finally {
       busy = '';
     }
   }
-  // Bulk-Enable: lädt alle (gefilterten) noch nicht geladenen, nicht geschützten
-  // Module nacheinander und lädt sie neu, damit ihre Slash-Befehle sofort
-  // erscheinen. Der Dashboard-Cog wird NICHT neu geladen (das würde das Gateway,
-  // mit dem diese Seite spricht, mitten im Lauf neu starten).
+  // Bulk enable: the server loads all (filtered) not-yet-loaded, unprotected
+  // modules SEQUENTIALLY in one request (each followed by a reload so their
+  // slash commands appear immediately; the dashboard cog itself is never
+  // reloaded – that would restart the gateway this page talks to) and returns
+  // a per-cog result.
+  let bulkTotal = 0;
   async function enableAll() {
-    const targets = filteredCogs.filter((c) => !c.loaded && !isLocked(c));
+    if (busy) return;
+    const targets = filteredCogs.filter((c) => !c.loaded && !isLocked(c)).map((c) => c.name);
     if (!targets.length) return;
     busy = 'enableall';
+    bulkTotal = targets.length;
     msg = '';
     err = '';
-    const headers = { 'content-type': 'application/json' };
-    const failed: string[] = [];
     try {
-      for (const c of targets) {
-        const res = await fetch('/api/cogs', {
-          method: 'POST',
-          headers,
-          body: JSON.stringify({ name: c.name, action: 'load' })
-        });
-        const j = await res.json().catch(() => ({ error: 'parse error' }));
-        if (j.error) {
-          failed.push(`${c.name}: ${j.error}`);
-          continue;
-        }
-        if (!isDashboardCog(c.name)) {
-          await fetch('/api/cogs', {
-            method: 'POST',
-            headers,
-            body: JSON.stringify({ name: c.name, action: 'reload' })
-          }).catch(() => {});
-        }
+      const res = await fetch('/api/cogs', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ action: 'load_all', names: targets })
+      });
+      const j = await res.json().catch(() => ({ error: 'parse error' }));
+      if (j.error) {
+        err = j.error;
+        toastError(j.error);
+        return;
       }
-      msg = failed.length ? `${$t('common.done')} (${failed.length} ✗)` : $t('common.done');
-      err = failed.join('; ');
+      const results: Array<{ name: string; ok: boolean; error?: string }> = j.results ?? [];
+      const failed = results.filter((r) => !r.ok);
+      msg = $t('cogs.bulk_result', { ok: j.loaded ?? results.length - failed.length, total: results.length });
+      if (failed.length) {
+        err = failed.map((f) => `${f.name}: ${f.error ?? '?'}`).join('; ');
+        toastError(msg + ' — ' + err);
+      } else {
+        toastSuccess(msg);
+      }
       await invalidateAll();
+    } catch (e) {
+      err = e instanceof Error ? e.message : $t('common.error');
+      toastError(err);
     } finally {
       busy = '';
     }
@@ -163,26 +184,58 @@
   // first, and remind about the load order. Only for the pdc_webdashboard cog.
   let reloadModalCog: string | null = null;
   let reloadCountdown: number | null = null;
+  let restartTimer: ReturnType<typeof setInterval> | null = null;
   const isDashboardCog = (name: string) => name.toLowerCase() === 'pdc_webdashboard';
   function requestReload(name: string) {
     if (isDashboardCog(name)) reloadModalCog = name;
     else reloadCog(name);
   }
+  const RESTART_MAX_WAIT_S = 30;
   function confirmReload() {
     const name = reloadModalCog;
     if (!name) return;
-    // Fire the reload (the gateway dies mid-request, so don't await it), then count
-    // down and hard-reload the page so it reconnects to the restarted gateway.
-    reloadCog(name);
-    reloadCountdown = 30;
-    const iv = setInterval(() => {
-      reloadCountdown = (reloadCountdown ?? 1) - 1;
-      if ((reloadCountdown ?? 0) <= 0) {
-        clearInterval(iv);
+    // Fire the reload (the gateway dies mid-request, so don't await it). We use a
+    // raw fetch here on purpose: post() would run invalidateAll() against the
+    // restarting gateway.
+    fetch('/api/cogs', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ name, action: 'reload' })
+    }).catch(() => {});
+    // Countdown that actually ticks AND reflects the real gateway state: after a
+    // short grace period we poll the health endpoint every 2 s and hard-reload the
+    // page as soon as the gateway is back – the countdown is only the upper bound.
+    reloadCountdown = RESTART_MAX_WAIT_S;
+    let ticks = 0;
+    let checking = false;
+    restartTimer = setInterval(async () => {
+      ticks += 1;
+      reloadCountdown = Math.max(0, RESTART_MAX_WAIT_S - ticks);
+      if (reloadCountdown <= 0) {
+        if (restartTimer) clearInterval(restartTimer);
         location.reload();
+        return;
+      }
+      if (ticks >= 3 && ticks % 2 === 1 && !checking) {
+        checking = true;
+        try {
+          const r = await fetch('/api/health');
+          const j = await r.json();
+          if (j.ok) {
+            if (restartTimer) clearInterval(restartTimer);
+            location.reload();
+          }
+        } catch {
+          /* gateway still down – keep counting */
+        } finally {
+          checking = false;
+        }
       }
     }, 1000);
   }
+  onDestroy(() => {
+    if (restartTimer) clearInterval(restartTimer);
+  });
   const syncSlash = () => post('/api/slash', { action: 'sync' }, 'sync');
   const setSlash = (cmd: { name: string; type: number; enabled: boolean }) =>
     post('/api/slash', { action: 'set', name: cmd.name, type: cmd.type, enabled: !cmd.enabled }, 'slash:' + cmd.name);
@@ -212,9 +265,12 @@
       if (j.error) { err = j.error; return; }
       const list: string[] = j.cogs_with_updates ?? [];
       updateMsg = list.length ? $t('cogs.updates_found', { n: list.length, list: list.join(', ') }) : $t('cogs.all_up_to_date');
+      // Sidebar badge: reflect the fresh check result immediately.
+      cogUpdateCount.set(list.length);
       await invalidateAll();
     } catch (e) {
-      err = e instanceof Error ? e.message : 'Fehler';
+      err = e instanceof Error ? e.message : $t('common.error');
+      toastError(err);
     } finally {
       busy = '';
     }
@@ -229,21 +285,21 @@
   const removeRepo = (name: string) => post('/api/downloader', { action: 'repo_remove', name }, 'repo_rm:' + name);
   const installCog = (repo: string, cog: string) => post('/api/downloader', { action: 'cog_install', repo, cog }, 'inst:' + cog);
   const uninstallCog = (cog: string) => post('/api/downloader', { action: 'cog_uninstall', cog }, 'uninst:' + cog);
-  // Markiert einen Cog lokal sofort als „kein Update mehr" (optimistisches UI),
-  // damit die Ansicht nicht erst nach F5 nachzieht.
+  // Immediately mark a cog locally as "no update left" (optimistic UI)
+  // so the view doesn't lag behind until an F5.
   function clearUpdateFlag(cog: string) {
     for (const repo of data.repos ?? []) {
       for (const ic of repo.installed ?? []) {
         if (ic.name === cog) ic.update_available = false;
       }
     }
-    data = data; // Reaktivität triggern
+    data = data; // trigger reactivity
   }
 
-  // Update-Warteschlange: Mehrere Klicks werden gesammelt und NACHEINANDER
-  // ausgeführt. So laufen nie zwei Downloader-Operationen / Slash-Syncs parallel
-  // (der Downloader ist dafür nicht ausgelegt). Das Gateway sichert das zusätzlich
-  // mit einem Lock ab. Schnelldurchklicken ist damit unkritisch.
+  // Update queue: multiple clicks are collected and executed ONE AFTER ANOTHER.
+  // This ensures no two downloader operations / slash syncs ever run in parallel
+  // (the downloader is not built for that). The gateway additionally guards this
+  // with a lock, so rapid clicking is harmless.
   let updateQueue: string[] = [];
   let updatingNow = '';
   let updatePending = new Set<string>();
@@ -251,7 +307,7 @@
   $: updatesRunning = updatingNow !== '' || updateQueue.length > 0 || syncingSlash;
 
   function enqueueUpdate(cog: string) {
-    if (updatePending.has(cog)) return; // läuft schon oder steht in der Schlange
+    if (updatePending.has(cog)) return; // already running or queued
     updatePending = new Set(updatePending).add(cog);
     updateQueue = [...updateQueue, cog];
     if (!updatingNow) processQueue();
@@ -270,8 +326,8 @@
       s.delete(cog);
       updatePending = s;
     }
-    // Slash-Commands NUR EINMAL am Ende synchronisieren (nicht pro Cog – das ist
-    // langsam und von Discord rate-limitet). Danach echten Stand nachladen.
+    // Sync slash commands ONLY ONCE at the end (not per cog – that is slow
+    // and rate-limited by Discord). Then reload the real state.
     if (anyOk) {
       syncingSlash = true;
       try {
@@ -290,10 +346,12 @@
     // Reconcile with server truth. downloader.repos now takes the Downloader lock,
     // so this read waits for any in-flight update and never returns a partial scan.
     await invalidateAll();
+    // Refresh the sidebar "cog updates" badge so it no longer shows the old count.
+    refreshCogUpdateCount();
   }
 
-  // Pro Cog: Update + Reload (schnell, KEIN Slash-Sync – der läuft einmal am Ende).
-  // Liefert true bei Erfolg.
+  // Per cog: update + reload (fast, NO slash sync – that runs once at the end).
+  // Returns true on success.
   async function runUpdate(cog: string): Promise<boolean> {
     err = '';
     try {
@@ -305,6 +363,7 @@
       const j = await res.json();
       if (j.error) {
         err = `${cog}: ${j.error}`;
+        toastError(err);
         return false;
       }
       const parts = [`${cog}: ${$t('cogs.updated')}`];
@@ -312,20 +371,21 @@
       else if (j.reloaded) parts.push($t('cogs.reloaded'));
       else if (j.reload_error) parts.push($t('cogs.reload_failed') + ': ' + j.reload_error);
       msg = parts.join(' · ');
-      clearUpdateFlag(cog); // optimistisch: Badge/Button sofort weg
+      clearUpdateFlag(cog); // optimistic: hide the badge/button right away
       return true;
     } catch (e) {
-      err = `${cog}: ` + (e instanceof Error ? e.message : 'Fehler');
+      err = `${cog}: ` + (e instanceof Error ? e.message : $t('common.error'));
+      toastError(err);
       return false;
     }
   }
 
-  // Aufklappbare Repos (Standard: zu, wenn mehr als 1 Repo).
+  // Collapsible repos (default: collapsed when there is more than 1 repo).
   let openRepos: Record<string, boolean> = {};
   const toggleRepo = (name: string) => (openRepos = { ...openRepos, [name]: !openRepos[name] });
   const isRepoOpen = (name: string) => openRepos[name] ?? (data.repos?.length ?? 0) <= 1;
 
-  // Installierte + verfügbare Cogs eines Repos zu EINER Liste mit Status zusammenführen.
+  // Merge a repo's installed + available cogs into ONE list with status.
   type RepoCog = { name: string; description: string; installed: boolean; update: boolean };
   function mergedCogs(repo: { installed?: Array<{ name: string; update_available?: boolean }>; available_cogs?: Array<{ name: string; description?: string }> }): RepoCog[] {
     const inst = new Map((repo.installed ?? []).map((c) => [c.name, !!c.update_available]));
@@ -374,7 +434,7 @@
           title={$t('cogs.enable_all_hint')}
           disabled={busy === 'enableall' || !filteredCogs.some((c) => !c.loaded && !isLocked(c))}
           on:click={enableAll}
-        >{busy === 'enableall' ? $t('cogs.enabling_all') : $t('cogs.enable_all')}</button>
+        >{busy === 'enableall' ? $t('cogs.enabling_n', { n: bulkTotal }) : $t('cogs.enable_all')}</button>
       </div>
       {#if filteredCogs.length === 0}
         <p class="text-sm text-muted-foreground">{$t('cogs.filter_empty')}</p>
@@ -649,6 +709,7 @@
           <h3 class="text-center text-lg font-semibold">{$t('cogs.reload_dash_restarting')}</h3>
           <p class="my-3 text-center text-6xl font-bold tabular-nums text-primary">{reloadCountdown}</p>
           <p class="text-center text-sm text-muted-foreground">{$t('cogs.reload_dash_countdown')}</p>
+          <p class="mt-1 text-center text-xs text-muted-foreground">{$t('cogs.reload_dash_polling')}</p>
         {/if}
       </div>
     </div>

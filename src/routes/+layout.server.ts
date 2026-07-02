@@ -1,5 +1,5 @@
 import type { LayoutServerLoad } from './$types';
-import { rpc, authFromUser } from '$lib/server/rpc';
+import { rpcWithRetry, authFromUser } from '$lib/server/rpc';
 
 type NavPage = { slug: string; title: string; nav: boolean; visibility: string };
 type ModulePage = { key: string; name: string; icon: string | null };
@@ -15,8 +15,8 @@ type Branding = {
   bot_avatar?: string | null;
 };
 
-// Modul-Cache: pages.list/dashboard.branding laufen sonst bei JEDER Navigation. Beides
-// ändert sich selten → kurzer TTL spart pro Seitenaufruf RPC-Roundtrips + Config-Reads.
+// Module cache: pages.list/dashboard.branding would otherwise run on EVERY navigation.
+// Both rarely change → a short TTL saves RPC round-trips + config reads per page view.
 let _cache: { at: number; pages: NavPage[]; branding: Branding | null } = {
   at: 0,
   pages: [],
@@ -32,9 +32,10 @@ export const load: LayoutServerLoad = async ({ locals, cookies }) => {
   const now = Date.now();
   if (now - _cache.at > TTL_MS) {
     try {
+      // Read-only calls: retry once on transient gateway hiccups (e.g. restart).
       const [p, b] = await Promise.all([
-        rpc<{ pages: NavPage[] }>('pages.list', {}),
-        rpc<{ ui?: Record<string, string>; bot_avatar?: string; invite_url?: string }>(
+        rpcWithRetry<{ pages: NavPage[] }>('pages.list', {}),
+        rpcWithRetry<{ ui?: Record<string, string>; bot_avatar?: string; invite_url?: string }>(
           'dashboard.branding',
           {}
         )
@@ -46,7 +47,7 @@ export const load: LayoutServerLoad = async ({ locals, cookies }) => {
         : null;
       _cache = { at: now, pages: p.pages ?? [], branding };
     } catch {
-      // Gateway offline o. ä. – alten Cache behalten, aber TTL zurücksetzen.
+      // Gateway offline or similar – keep the old cache but reset the TTL.
       _cache = { at: now, pages: _cache.pages, branding: _cache.branding };
     }
   }
@@ -61,7 +62,7 @@ export const load: LayoutServerLoad = async ({ locals, cookies }) => {
       modulePages = hit.pages;
     } else {
       try {
-        const m = await rpc<{ contributions: Array<Record<string, unknown>> }>(
+        const m = await rpcWithRetry<{ contributions: Array<Record<string, unknown>> }>(
           'manifest.get',
           {},
           authFromUser(locals.user, null, uiLocale)

@@ -5,7 +5,9 @@ import en from './en.json';
 type Dict = Record<string, string>;
 const dicts: Record<string, Dict> = { 'de-DE': de, 'en-US': en };
 
-export const locale = writable<string>('de-DE');
+// Default UI language is US English; a stored preference (localStorage/cookie)
+// set via setLocale() overrides it on the client.
+export const locale = writable<string>('en-US');
 
 export const t = derived(locale, ($locale) => {
   const dict = dicts[$locale] ?? dicts['en-US'];

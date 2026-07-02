@@ -1,6 +1,8 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { rpc, authFromUser, RpcError } from '$lib/server/rpc';
+import { dedupe } from '$lib/server/inflight';
+import { recordCogUpdated } from '$lib/server/updatedCogs';
 
 const METHODS: Record<string, string> = {
   repo_add: 'downloader.repo_add',
@@ -12,16 +14,30 @@ const METHODS: Record<string, string> = {
   repos: 'downloader.repos'
 };
 
+// Downloader operations (git clone/pull, pip installs) can take well over the
+// default 15 s RPC timeout.
+const DOWNLOADER_TIMEOUT_MS = 120_000;
+
 export const POST: RequestHandler = async ({ locals, request }) => {
   if (!locals.user) return json({ error: 'unauthorized' }, { status: 401 });
+  const user = locals.user; // narrow for use inside the closure below
   const body = await request.json();
   const method = METHODS[body.action];
-  if (!method) return json({ error: 'unbekannte Aktion' }, { status: 400 });
+  if (!method) return json({ error: 'unknown action' }, { status: 400 });
   const { action, ...args } = body;
   try {
-    const r = await rpc(method, args, authFromUser(locals.user));
+    // Idempotency guard: identical in-flight requests (rapid double clicks)
+    // share one RPC. The gateway additionally serializes downloader operations
+    // with its own lock.
+    const key = `downloader:${user.id}:${action}:${JSON.stringify(args)}`;
+    const r = await dedupe(key, () => rpc(method, args, authFromUser(user), DOWNLOADER_TIMEOUT_MS));
+    // Keep the sidebar "cog updates" badge in sync: this cog is up to date now.
+    if (action === 'cog_update' && typeof args.cog === 'string') {
+      recordCogUpdated(args.cog);
+    }
     return json(r);
   } catch (e) {
-    return json({ error: e instanceof RpcError ? e.message : 'Fehler' }, { status: 502 });
+    console.error(`[api/downloader] action "${action}" failed:`, e);
+    return json({ error: e instanceof RpcError ? e.message : 'Error' }, { status: 502 });
   }
 };

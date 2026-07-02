@@ -20,6 +20,12 @@ cd PDC_Redbot_Webapp
 
 Architecture details: `PDC_Redbot_Cogs/pdc_webdashboard/ARCHITECTURE.md`.
 
+## Self-hosting
+
+Step-by-step deployment guide (Discord app setup, Red + cogs, Docker Compose,
+reverse proxy, troubleshooting): **[docs/SELF-HOSTING.md](docs/SELF-HOSTING.md)**.
+Quick start: copy `.env.example` to `.env`, fill it in, then `docker compose up -d --build`.
+
 ## Requirements — companion cog
 
 The web app talks to the bot through the **`pdc_webdashboard`** cog (the RPC gateway).
@@ -62,7 +68,18 @@ Optional: install **`pdc_webdashboard_stats`** (same repo) to power the `/stats`
   status, invites, activity, heatmaps, live "Now", peaks, leaderboard, retention,
   member/channel drilldown) with a server dropdown, time filter (up to 365 days) and
   Chart.js charts. Requires the **`pdc_webdashboard_stats`** cog (collects the data).
+- **Feature catalog** (`/features`): a card grid of all PDC cog modules with **"replaces
+  bot X"** hints (MEE6, VoiceMaster, Ticket Tool, …), loaded/not-loaded status, per-module
+  **Open/Setup** links and owner-only **load/unload toggles**; the **setup wizard**
+  (`/features/setup/<cog>`) steps through a module's settings panels one by one.
 - **Announcements** (`/announce`): embed builder with live preview, send to a channel.
+- **Embed builder** (`/embeds`): visual builder with a live Discord-style preview, sending
+  via the announce gateway (title/description/color/author/footer/image; fields/thumbnail/
+  timestamp are preview & export only), **localStorage drafts** and **JSON import/export**
+  in the Discord API embed format.
+- **Public guild pages** (`/public/<guildId>`): a **login-free server showcase** page,
+  powered by public custom pages via the slug convention `guild-<id>` (plus
+  `guild-<id>-*` sub-pages) — nothing auth-gated is ever fetched anonymously.
 - **Settings** (`/settings`): global bot settings, branding (title/icon/color/theme),
   a **Markdown bot description**, a **website description (`short_desc`)** used as the HTML
   `<meta name="description">` and Open Graph description for SEO/link previews, an optional

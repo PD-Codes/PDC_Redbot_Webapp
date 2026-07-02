@@ -23,12 +23,13 @@ export const POST: RequestHandler = async ({ locals, request }) => {
   if (!locals.user) return json({ error: 'unauthorized' }, { status: 401 });
   const { section, guildId, days, member_id, channel_id, metric } = await request.json();
   const method = METHODS[section];
-  if (!method) return json({ error: 'unbekannte Sektion' }, { status: 400 });
-  if (!guildId) return json({ error: 'guildId fehlt' }, { status: 400 });
+  if (!method) return json({ error: 'unknown section' }, { status: 400 });
+  if (!guildId) return json({ error: 'guildId missing' }, { status: 400 });
   const auth = authFromUser(locals.user, guildId);
   try {
     return json(await rpc(method, { days, member_id, channel_id, metric }, auth));
   } catch (e) {
-    return json({ error: e instanceof RpcError ? e.message : 'Fehler' }, { status: 502 });
+    console.error(`[api/stats] section "${section}" failed:`, e);
+    return json({ error: e instanceof RpcError ? e.message : 'Error' }, { status: 502 });
   }
 };

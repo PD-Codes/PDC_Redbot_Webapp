@@ -1,20 +1,66 @@
+# ============================================================================
+# PDC Redbot Webapp + Red-DiscordBot — docker compose stack
+#
+# IMPORTANT: The web app talks to the bot through the RPC gateway provided by
+# the `pdc_webdashboard` cog (repo PDC_Redbot_Cogs). The cog must be installed
+# and loaded inside Red, and its gateway must listen on a host/port that the
+# webapp container can reach. Inside this stack:
+#   1) In Red:  [p]repo add pdc-cogs https://github.com/PD-Codes/PDC_Redbot_Cogs
+#               [p]cog install pdc-cogs pdc_webdashboard
+#               [p]load pdc_webdashboard
+#               [p]pdcdashboard bind 0.0.0.0 6970   (so the webapp container can connect)
+#               [p]pdcdashboard token               (copy into .env as GATEWAY_TOKEN)
+#   2) In .env: GATEWAY_URL=http://redbot:6970
+# The gateway port in `[p]pdcdashboard bind` MUST match the port in GATEWAY_URL.
+# ============================================================================
+
 services:
+  # Red-DiscordBot (official image, "full" variant includes build tools for cogs)
+  redbot:
+    image: phasecorex/red-discordbot:full
+    container_name: pdc-redbot
+    restart: unless-stopped
+    environment:
+      # Discord bot token (Developer Portal -> Bot -> Token)
+      TOKEN: ${DISCORD_BOT_TOKEN:?Set DISCORD_BOT_TOKEN in .env}
+      # Command prefix for the bot
+      PREFIX: ${BOT_PREFIX:-!}
+      TZ: ${TZ:-Europe/Berlin}
+    volumes:
+      # Persistent Red data (config, cogs, downloader repos)
+      - redbot_data:/data
+    networks:
+      - pdc
+    # The gateway port is only exposed on the internal network by default.
+    # Uncomment to reach it from the host (e.g. for `npm run dev`):
+    # ports:
+    #   - "127.0.0.1:6970:6970"
+
+  # SvelteKit web dashboard (adapter-node)
   webapp:
     build: .
     image: pdc-redbot-webapp:latest
+    container_name: pdc-webapp
     restart: unless-stopped
-    ports:
-      - "3000:3000"
+    depends_on:
+      - redbot
     env_file:
+      # DISCORD_CLIENT_ID/SECRET, DISCORD_REDIRECT_URI, GATEWAY_URL,
+      # GATEWAY_TOKEN, SESSION_SECRET, ... — see .env.example
       - .env
     environment:
-      # adapter-node
       HOST: 0.0.0.0
       PORT: 3000
       NODE_ENV: production
-      # Läuft der Bot auf dem Host, erreicht der Container das Gateway über
-      # host.docker.internal. Auf Linux sorgt extra_hosts unten dafür.
-      # (Kann in .env via GATEWAY_URL überschrieben werden.)
+      # Public origin behind a reverse proxy, e.g. https://dashboard.example.com
+      # ORIGIN: https://dashboard.example.com
+    ports:
+      - "3000:3000"
+    volumes:
+      # Persisted dashboard logs (LOG_STORE_DIR defaults to /app/data)
+      - webapp_data:/app/data
+    # Allows GATEWAY_URL=http://host.docker.internal:6970 if you run the bot
+    # natively on the host instead of the redbot service above.
     extra_hosts:
       - "host.docker.internal:host-gateway"
     healthcheck:
@@ -22,3 +68,13 @@ services:
       interval: 30s
       timeout: 5s
       retries: 3
+    networks:
+      - pdc
+
+networks:
+  pdc:
+    driver: bridge
+
+volumes:
+  redbot_data:
+  webapp_data:

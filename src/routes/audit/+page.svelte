@@ -1,29 +1,37 @@
 <script lang="ts">
   import Card from '$lib/components/ui/Card.svelte';
   import { t } from '$lib/i18n';
+  import { toastError } from '$lib/stores/toasts';
   import type { AuditEntry } from './+page.server';
 
   export let data: { isOwner: boolean; entries: AuditEntry[] };
 
   let entries: AuditEntry[] = data.entries ?? [];
   let filter = '';
+  let actionFilter = 'all';
   let busy = false;
 
-  $: filtered = filter.trim()
-    ? entries.filter((e) => {
-        const hay = `${e.action} ${e.user ?? ''} ${e.guild ?? ''} ${JSON.stringify(e.detail)}`.toLowerCase();
-        return hay.includes(filter.trim().toLowerCase());
-      })
-    : entries;
+  // Action filter options: the distinct action "namespaces" (part before the dot).
+  $: actionGroups = Array.from(
+    new Set(entries.map((e) => String(e.action ?? '').split('.')[0]).filter(Boolean))
+  ).sort();
+
+  $: filtered = entries.filter((e) => {
+    if (actionFilter !== 'all' && String(e.action ?? '').split('.')[0] !== actionFilter) return false;
+    if (!filter.trim()) return true;
+    const hay = `${e.action} ${e.user ?? ''} ${e.guild ?? ''} ${JSON.stringify(e.detail)}`.toLowerCase();
+    return hay.includes(filter.trim().toLowerCase());
+  });
 
   // Pagination.
   const PAGE_SIZES = [10, 20, 50, 100];
   let pageSize = 10;
   let page = 1;
   $: totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
-  // Back to page 1 whenever the filter or the page size changes.
+  // Back to page 1 whenever a filter or the page size changes.
   $: {
     filter;
+    actionFilter;
     pageSize;
     page = 1;
   }
@@ -39,10 +47,49 @@
         body: JSON.stringify({ action: 'audit_list', limit: 300 })
       });
       const j = await res.json();
-      if (!j.error) entries = j.entries ?? [];
+      if (j.error) toastError($t('audit.refresh_failed') + ': ' + j.error);
+      else entries = j.entries ?? [];
+    } catch (e) {
+      toastError($t('audit.refresh_failed') + ': ' + (e instanceof Error ? e.message : String(e)));
     } finally {
       busy = false;
     }
+  }
+
+  // ── Export (current filter result) ───────────────────────────────────
+  function download(text: string, name: string, mime: string) {
+    const blob = new Blob([text], { type: mime });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = name;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+  function csvCell(v: unknown): string {
+    const s = v == null ? '' : String(v);
+    return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  }
+  function exportCsv() {
+    const rows: string[] = ['time,action,user,user_id,guild,detail'];
+    for (const e of filtered) {
+      rows.push(
+        [
+          e.time ? new Date(e.time * 1000).toISOString() : '',
+          e.action,
+          e.user ?? '',
+          e.user_id ?? '',
+          e.guild ?? '',
+          JSON.stringify(e.detail ?? {})
+        ]
+          .map(csvCell)
+          .join(',')
+      );
+    }
+    download(rows.join('\n'), 'audit-log.csv', 'text/csv;charset=utf-8;');
+  }
+  function exportJson() {
+    download(JSON.stringify(filtered, null, 2), 'audit-log.json', 'application/json');
   }
 
   function fmtTime(ts: number | null): string {
@@ -74,12 +121,28 @@
   <div class="flex flex-wrap items-center justify-between gap-3">
     <h1 class="text-2xl font-semibold">{$t('audit.title')}</h1>
     {#if data.isOwner}
-      <div class="flex items-center gap-2">
+      <div class="flex flex-wrap items-center gap-2">
+        <select bind:value={actionFilter} class="rounded-md border border-input bg-background px-2 py-1.5 text-sm" title={$t('audit.filter_action')}>
+          <option value="all">{$t('audit.filter_action_all')}</option>
+          {#each actionGroups as g (g)}
+            <option value={g}>{g}</option>
+          {/each}
+        </select>
         <input
           bind:value={filter}
           placeholder={$t('audit.filter')}
           class="rounded-md border border-input bg-background px-3 py-1.5 text-sm"
         />
+        <button
+          type="button"
+          class="rounded-md border border-border px-3 py-1.5 text-sm hover:bg-secondary disabled:opacity-50"
+          disabled={!filtered.length}
+          on:click={exportCsv}>CSV</button>
+        <button
+          type="button"
+          class="rounded-md border border-border px-3 py-1.5 text-sm hover:bg-secondary disabled:opacity-50"
+          disabled={!filtered.length}
+          on:click={exportJson}>JSON</button>
         <button
           type="button"
           class="rounded-md border border-border px-3 py-1.5 text-sm hover:bg-secondary disabled:opacity-50"
