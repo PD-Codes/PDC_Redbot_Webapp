@@ -14,9 +14,9 @@ const METHODS: Record<string, string> = {
   repos: 'downloader.repos'
 };
 
-// Downloader operations (git clone/pull, pip installs) can take well over the
-// default 15 s RPC timeout.
-const DOWNLOADER_TIMEOUT_MS = 120_000;
+// Downloader operations (git clone/pull, pip installs, post-install reload of
+// slow cogs) can take several minutes; 5 min ceiling as a safety net only.
+const DOWNLOADER_TIMEOUT_MS = 300_000;
 
 export const POST: RequestHandler = async ({ locals, request }) => {
   if (!locals.user) return json({ error: 'unauthorized' }, { status: 401 });

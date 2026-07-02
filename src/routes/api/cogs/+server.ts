@@ -9,9 +9,10 @@ import { dedupe } from '$lib/server/inflight';
 const PROTECTED_COGS = new Set(['pdc_webdashboard', 'pdc_webdashboard_stats']);
 const GATEWAY_COG = 'pdc_webdashboard';
 
-// Cog load/reload can take a while (imports, slash registration); use a more
-// generous timeout than the 15 s default so bulk operations don't fail early.
-const COG_ACTION_TIMEOUT_MS = 60_000;
+// Cog load/reload can take a while (imports, slash registration) — some cogs
+// need up to 2 minutes. Effectively no early cutoff: 5 min hard ceiling only
+// as a last-resort safety net against a fully hung gateway.
+const COG_ACTION_TIMEOUT_MS = 300_000;
 
 interface BulkResult {
   name: string;
