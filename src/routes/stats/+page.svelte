@@ -69,6 +69,11 @@
   let channelId = '';
   let heatmapMetric: 'messages' | 'voice' = 'messages';
 
+  // Leaderboard: fetch up to 100 entries from the gateway, paginate client-side.
+  const LEADERBOARD_LIMIT = 100;
+  const LEADERBOARD_PAGE_SIZE = 20;
+  let lbPage: Record<'messages' | 'voice', number> = { messages: 1, voice: 1 };
+
   let loading = false;
   let error = '';
   let result: any = null;
@@ -95,7 +100,8 @@
           days,
           member_id: memberId,
           channel_id: channelId,
-          metric: heatmapMetric
+          metric: heatmapMetric,
+          limit: section === 'leaderboard' ? LEADERBOARD_LIMIT : undefined
         })
       });
       const j = await res.json();
@@ -108,6 +114,7 @@
         // Drilldown: ausgewählte Option vom Server übernehmen.
         if (section === 'member_drilldown' && j.member_id != null) memberId = j.member_id;
         if (section === 'channel_drilldown' && j.channel_id != null) channelId = j.channel_id;
+        if (section === 'leaderboard') lbPage = { messages: 1, voice: 1 }; // reset pagination on new data
       }
     } catch (e) {
       if (seq !== reqSeq) return;
@@ -843,9 +850,13 @@
           {:else if section === 'leaderboard'}
             <div class="grid grid-cols-1 gap-5 lg:grid-cols-2">
               {#each [{ key: 'messages', tkey: 'stats.lb_messages', voice: false }, { key: 'voice', tkey: 'stats.lb_voice', voice: true }] as board (board.key)}
+                {@const rows = result[board.key] ?? []}
+                {@const totalPages = Math.max(1, Math.ceil(rows.length / LEADERBOARD_PAGE_SIZE))}
+                {@const curPage = Math.min(lbPage[board.key], totalPages)}
+                {@const paged = rows.slice((curPage - 1) * LEADERBOARD_PAGE_SIZE, curPage * LEADERBOARD_PAGE_SIZE)}
                 <Card class="p-4">
                   <p class="mb-3 text-sm font-semibold">{$t(board.tkey)}</p>
-                  {#if (result[board.key] ?? []).length}
+                  {#if rows.length}
                     <table class="w-full text-sm">
                       <thead>
                         <tr class="text-left text-xs text-muted-foreground">
@@ -856,7 +867,7 @@
                         </tr>
                       </thead>
                       <tbody>
-                        {#each result[board.key] as row (row.id)}
+                        {#each paged as row (row.id)}
                           <tr class="border-b border-border/40 last:border-0">
                             <td class="py-1.5 pr-2 text-muted-foreground">{row.rank}</td>
                             <td class="py-1.5 pr-2 truncate">{row.name}</td>
@@ -876,6 +887,23 @@
                         {/each}
                       </tbody>
                     </table>
+                    {#if totalPages > 1}
+                      <div class="mt-3 flex items-center justify-end gap-3 text-sm">
+                        <button
+                          type="button"
+                          class="rounded-md border border-border px-2.5 py-1 hover:bg-secondary disabled:opacity-40"
+                          disabled={curPage <= 1}
+                          aria-label={$t('audit.prev')}
+                          on:click={() => (lbPage = { ...lbPage, [board.key]: Math.max(1, curPage - 1) })}>‹</button>
+                        <span class="whitespace-nowrap text-muted-foreground">{$t('audit.page_of', { page: curPage, total: totalPages })}</span>
+                        <button
+                          type="button"
+                          class="rounded-md border border-border px-2.5 py-1 hover:bg-secondary disabled:opacity-40"
+                          disabled={curPage >= totalPages}
+                          aria-label={$t('audit.next')}
+                          on:click={() => (lbPage = { ...lbPage, [board.key]: Math.min(totalPages, curPage + 1) })}>›</button>
+                      </div>
+                    {/if}
                   {:else}
                     <p class="text-sm text-muted-foreground">{$t('common.no_data')}</p>
                   {/if}
