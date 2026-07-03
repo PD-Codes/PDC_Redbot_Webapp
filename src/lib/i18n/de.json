@@ -311,6 +311,8 @@
   "stats.recent_invites": "Letzte Einladungen",
   "stats.top_games": "Top Spiele (Stunden)",
   "stats.no_status_data": "Keine Status-Daten im Zeitraum.",
+  "stats.status_current": "Aktuell",
+  "stats.status_peak_period": "Peak (Zeitraum)",
   "stats.no_invite_data": "Keine Einladungs-Daten im Zeitraum.",
   "stats.no_activity_data": "Keine Aktivitäts-Daten.",
   "stats.col_date": "Datum",

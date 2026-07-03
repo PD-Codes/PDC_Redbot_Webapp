@@ -210,41 +210,65 @@
   }
 
   // ── Abgeleitete Datasets (mit Toggle) ────────────────────────────────
+  // IMPORTANT: reference `hidden` directly here (not via the isHidden() helper).
+  // Svelte's $: dependency tracking is purely syntactic — it only picks up
+  // top-level variables referenced literally inside the reactive statement.
+  // Calling a helper function that reads `hidden` internally does NOT register
+  // `hidden` as a dependency, so toggling a series used to have no visible
+  // effect until the next full data fetch (e.g. a page reload).
   $: overviewSeries =
     result && section === 'overview'
       ? [
-          { label: $t('stats.series_members'), color: COLORS.green, data: result.members ?? [], hidden: isHidden('overview', 0) },
-          { label: $t('stats.series_joins'), color: COLORS.blue, data: result.joins ?? [], hidden: isHidden('overview', 1) },
-          { label: $t('stats.series_leaves'), color: COLORS.red, data: result.leaves ?? [], hidden: isHidden('overview', 2) },
-          { label: $t('stats.series_net'), color: COLORS.amber, data: result.net ?? [], hidden: isHidden('overview', 3) }
+          { label: $t('stats.series_members'), color: COLORS.green, data: result.members ?? [], hidden: hidden['overview']?.[0] ?? false },
+          { label: $t('stats.series_joins'), color: COLORS.blue, data: result.joins ?? [], hidden: hidden['overview']?.[1] ?? false },
+          { label: $t('stats.series_leaves'), color: COLORS.red, data: result.leaves ?? [], hidden: hidden['overview']?.[2] ?? false },
+          { label: $t('stats.series_net'), color: COLORS.amber, data: result.net ?? [], hidden: hidden['overview']?.[3] ?? false }
         ]
       : [];
 
   $: statusSeries =
     result && section === 'status'
       ? [
-          { label: $t('stats.series_online'), color: COLORS.green, data: (result.samples ?? []).map((s: any) => s.on), fill: true, hidden: isHidden('status', 0) },
-          { label: $t('stats.series_idle'), color: COLORS.amber, data: (result.samples ?? []).map((s: any) => s.idle), fill: true, hidden: isHidden('status', 1) },
-          { label: $t('stats.series_dnd'), color: COLORS.red, data: (result.samples ?? []).map((s: any) => s.dnd), fill: true, hidden: isHidden('status', 2) }
+          { label: $t('stats.series_online'), color: COLORS.green, data: (result.samples ?? []).map((s: any) => s.on), fill: true, hidden: hidden['status']?.[0] ?? false },
+          { label: $t('stats.series_idle'), color: COLORS.amber, data: (result.samples ?? []).map((s: any) => s.idle), fill: true, hidden: hidden['status']?.[1] ?? false },
+          { label: $t('stats.series_dnd'), color: COLORS.red, data: (result.samples ?? []).map((s: any) => s.dnd), fill: true, hidden: hidden['status']?.[2] ?? false }
         ]
       : [];
   $: statusLabels = result && section === 'status' ? (result.samples ?? []).map((s: any) => shortDate(s.t)) : [];
+  // KPI cards for the Status page: latest snapshot + peak over the selected period.
+  $: statusSamplesRaw = result && section === 'status' ? (result.samples ?? []) : [];
+  $: statusCurrent = statusSamplesRaw.length ? statusSamplesRaw[statusSamplesRaw.length - 1] : null;
+  $: statusPeakVals = statusSamplesRaw.length
+    ? {
+        on: Math.max(...statusSamplesRaw.map((s: any) => s.on ?? 0)),
+        idle: Math.max(...statusSamplesRaw.map((s: any) => s.idle ?? 0)),
+        dnd: Math.max(...statusSamplesRaw.map((s: any) => s.dnd ?? 0))
+      }
+    : null;
+
+  // Invites: label each series/slice as "name (code)" when the gateway tells us
+  // who owns the invite code (result.code_owners: { [code]: displayName }).
+  // Falls back to the bare code when that isn't available.
+  function inviteLabel(code: string): string {
+    const owner = result?.code_owners?.[code];
+    return owner ? `${owner} (${code})` : code;
+  }
 
   $: inviteSeries =
     result && section === 'invites'
       ? Object.keys(result.series ?? {}).map((code, idx) => ({
-          label: code,
+          label: inviteLabel(code),
           color: DONUT[idx % DONUT.length],
           data: result.series[code] as number[],
-          hidden: isHidden('invites', idx)
+          hidden: hidden['invites']?.[idx] ?? false
         }))
       : [];
 
   $: peakSeries =
     result && section === 'peaks'
       ? [
-          { label: $t('stats.series_online'), color: COLORS.green, data: result.online ?? [], hidden: isHidden('peaks', 0) },
-          { label: $t('stats.series_voice'), color: COLORS.violet, data: result.voice ?? [], hidden: isHidden('peaks', 1) }
+          { label: $t('stats.series_online'), color: COLORS.green, data: result.online ?? [], hidden: hidden['peaks']?.[0] ?? false },
+          { label: $t('stats.series_voice'), color: COLORS.violet, data: result.voice ?? [], hidden: hidden['peaks']?.[1] ?? false }
         ]
       : [];
 
@@ -470,6 +494,34 @@
 
           <!-- STATUS ─────────────────────────────────────────────── -->
           {:else if section === 'status'}
+            {#if statusCurrent || statusPeakVals}
+              <div class="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                <Card class="p-4">
+                  <p class="text-xs text-muted-foreground">{$t('stats.status_current')} · {$t('stats.now_online')}</p>
+                  <p class="mt-1 text-2xl font-semibold text-green-400">{fmt(statusCurrent?.on)}</p>
+                </Card>
+                <Card class="p-4">
+                  <p class="text-xs text-muted-foreground">{$t('stats.status_current')} · {$t('stats.now_idle')}</p>
+                  <p class="mt-1 text-2xl font-semibold text-amber-400">{fmt(statusCurrent?.idle)}</p>
+                </Card>
+                <Card class="p-4">
+                  <p class="text-xs text-muted-foreground">{$t('stats.status_current')} · {$t('stats.now_dnd')}</p>
+                  <p class="mt-1 text-2xl font-semibold text-red-400">{fmt(statusCurrent?.dnd)}</p>
+                </Card>
+                <Card class="p-4">
+                  <p class="text-xs text-muted-foreground">{$t('stats.status_peak_period')} · {$t('stats.now_online')}</p>
+                  <p class="mt-1 text-2xl font-semibold text-green-400">{fmt(statusPeakVals?.on)}</p>
+                </Card>
+                <Card class="p-4">
+                  <p class="text-xs text-muted-foreground">{$t('stats.status_peak_period')} · {$t('stats.now_idle')}</p>
+                  <p class="mt-1 text-2xl font-semibold text-amber-400">{fmt(statusPeakVals?.idle)}</p>
+                </Card>
+                <Card class="p-4">
+                  <p class="text-xs text-muted-foreground">{$t('stats.status_peak_period')} · {$t('stats.now_dnd')}</p>
+                  <p class="mt-1 text-2xl font-semibold text-red-400">{fmt(statusPeakVals?.dnd)}</p>
+                </Card>
+              </div>
+            {/if}
             <Card class="p-4">
               <div class="mb-3">
                 <SeriesToggle
@@ -504,7 +556,7 @@
                 <p class="mb-3 text-sm font-semibold">{$t('stats.top_invites')}</p>
                 {#if (result.top_invites ?? []).length}
                   <DonutChart
-                    labels={result.top_invites.map((t) => t.code)}
+                    labels={result.top_invites.map((t) => inviteLabel(t.code))}
                     data={result.top_invites.map((t) => t.count)}
                     colors={DONUT}
                     locale={fmtLocale}
@@ -514,7 +566,13 @@
                       {#each result.top_invites as t, i (t.code)}
                         <tr class="border-b border-border/40 last:border-0">
                           <td class="py-1.5 pr-2 text-muted-foreground">{i + 1}</td>
-                          <td class="py-1.5 pr-2"><code>{t.code}</code></td>
+                          <td class="py-1.5 pr-2">
+                            {#if result.code_owners?.[t.code]}
+                              {result.code_owners[t.code]} <code class="text-muted-foreground">({t.code})</code>
+                            {:else}
+                              <code>{t.code}</code>
+                            {/if}
+                          </td>
                           <td class="py-1.5 text-right tabular-nums">{fmt(t.count)}</td>
                         </tr>
                       {/each}
