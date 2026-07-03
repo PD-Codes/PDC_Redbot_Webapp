@@ -68,6 +68,10 @@ services:
       interval: 30s
       timeout: 5s
       retries: 3
+      # Grace period before failed checks count against `retries` — gives the
+      # app time to fully boot (Node start + first RPC round-trip to the bot
+      # gateway) without Docker restart-looping it as "unhealthy".
+      start_period: 30s
     networks:
       - pdc
 
