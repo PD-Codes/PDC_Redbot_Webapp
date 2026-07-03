@@ -173,6 +173,7 @@
   "commands.by_category": "Nach Kategorie",
   "commands.filter_category": "Kategorie",
   "commands.cat_all": "Alle",
+  "commands.cat_owner": "Owner",
   "commands.cat_admin": "Admin",
   "commands.cat_moderator": "Moderator",
   "commands.cat_user": "Benutzer",

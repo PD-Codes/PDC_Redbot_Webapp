@@ -16,7 +16,7 @@
   let selectedModule: string | null = null; // null = alle
   let query = '';
   let typeFilter: 'all' | 'slash' | 'prefix_only' = 'all';
-  let selectedCategory: 'all' | 'Admin' | 'Moderator' | 'Setup' | 'User' = 'all';
+  let selectedCategory: 'all' | 'Owner' | 'Admin' | 'Moderator' | 'Setup' | 'User' = 'all';
 
   // Prefix- und Slash-Listen zu einem Befehl je Name zusammenführen.
   function merge(c: typeof data.commands): Cmd[] {
@@ -58,7 +58,7 @@
   });
 
   // Kategorie-Dropdown-Filter (Alle / Admin / Moderator / Setup / Benutzer).
-  const CATEGORY_FILTERS = ['Admin', 'Moderator', 'Setup', 'User'];
+  const CATEGORY_FILTERS = ['Owner', 'Admin', 'Moderator', 'Setup', 'User'];
   // Gruppierung der Anzeige: nach Modul.
   $: groups = (() => {
     const acc: Record<string, Cmd[]> = {};
