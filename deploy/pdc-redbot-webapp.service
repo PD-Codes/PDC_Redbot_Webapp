@@ -6,10 +6,16 @@ After=network.target
 Type=simple
 # Pfade ggf. anpassen:
 WorkingDirectory=/opt/pdc/pdc-redbot-webapp
+# Set SHUTDOWN_TIMEOUT=5 in .env - adapter-node otherwise waits up to 30s
+# for open connections (e.g. the dashboard's /api/events SSE stream, which is
+# never idle) to end before a stop/restart actually completes. See .env.example.
 EnvironmentFile=/opt/pdc/pdc-redbot-webapp/.env
 ExecStart=/usr/bin/node build
 Restart=on-failure
 RestartSec=5
+# Safety net in case shutdown ever hangs for an unrelated reason - systemd's
+# default (90s) would otherwise make a stuck restart look like it's frozen.
+TimeoutStopSec=40
 User=pdc
 Group=pdc
 

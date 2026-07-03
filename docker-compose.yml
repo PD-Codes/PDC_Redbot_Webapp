@@ -54,6 +54,11 @@ services:
       NODE_ENV: production
       # Public origin behind a reverse proxy, e.g. https://dashboard.example.com
       # ORIGIN: https://dashboard.example.com
+      # Force-close lingering connections (e.g. the /api/events SSE stream)
+      # this many seconds after SIGTERM instead of adapter-node's 30s default -
+      # otherwise `docker compose restart`/`stop` stalls until a client
+      # disconnects or the default timeout hits.
+      SHUTDOWN_TIMEOUT: 5
     ports:
       - "3000:3000"
     volumes:
