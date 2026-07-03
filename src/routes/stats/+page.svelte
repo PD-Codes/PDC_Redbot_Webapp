@@ -187,6 +187,13 @@
     if (n == null) return '–';
     return nf.format(Math.round(n * 10) / 10);
   }
+  // Retention: the gateway has been observed sending the rate both as a 0–1
+  // fraction and as an already-computed 0–100 percentage. Normalize defensively
+  // so the UI never shows something like "8,420%" again (16/19 stayed = ~84.2%).
+  function retentionPct(rate: number | null | undefined): number {
+    const r = rate ?? 0;
+    return r > 1 ? r : r * 100;
+  }
   function shortDate(iso: string): string {
     const d = new Date(iso);
     if (isNaN(d.getTime())) return iso;
@@ -392,7 +399,7 @@
                   on:toggle={(e) => toggleSeries('overview', 4, e.detail)}
                 />
               </div>
-              <LineChart labels={result.labels ?? []} datasets={overviewSeries} />
+              <LineChart labels={result.labels ?? []} datasets={overviewSeries} locale={fmtLocale} />
             </Card>
 
           <!-- MESSAGES / VOICE ───────────────────────────────────── -->
@@ -407,6 +414,7 @@
               <BarChart
                 labels={result.labels ?? []}
                 datasets={[{ label: isVoice ? $t('stats.label_hours') : $t('stats.label_messages'), color: isVoice ? COLORS.violet : COLORS.blue, data: result.values ?? [] }]}
+                locale={fmtLocale}
               />
             </Card>
             <div class="grid grid-cols-1 gap-5 lg:grid-cols-2">
@@ -417,6 +425,7 @@
                     labels={result.top_members.map((m) => m.name)}
                     data={result.top_members.map((m) => m.value)}
                     colors={DONUT}
+                    locale={fmtLocale}
                   />
                   <table class="mt-3 w-full text-sm">
                     <tbody>
@@ -440,6 +449,7 @@
                     labels={result.top_channels.map((c) => c.name)}
                     data={result.top_channels.map((c) => c.value)}
                     colors={DONUT}
+                    locale={fmtLocale}
                   />
                   <table class="mt-3 w-full text-sm">
                     <tbody>
@@ -468,7 +478,7 @@
                 />
               </div>
               {#if statusLabels.length}
-                <LineChart labels={statusLabels} datasets={statusSeries} area stacked />
+                <LineChart labels={statusLabels} datasets={statusSeries} area stacked locale={fmtLocale} />
               {:else}
                 <p class="text-sm text-muted-foreground">{$t('stats.no_status_data')}</p>
               {/if}
@@ -484,7 +494,7 @@
                     on:toggle={(e) => toggleSeries('invites', inviteSeries.length, e.detail)}
                   />
                 </div>
-                <LineChart labels={result.labels ?? []} datasets={inviteSeries} />
+                <LineChart labels={result.labels ?? []} datasets={inviteSeries} locale={fmtLocale} />
               {:else}
                 <p class="text-sm text-muted-foreground">{$t('stats.no_invite_data')}</p>
               {/if}
@@ -497,6 +507,7 @@
                     labels={result.top_invites.map((t) => t.code)}
                     data={result.top_invites.map((t) => t.count)}
                     colors={DONUT}
+                    locale={fmtLocale}
                   />
                   <table class="mt-3 w-full text-sm">
                     <tbody>
@@ -567,6 +578,7 @@
                   labels={result.top_games.map((g) => g.name)}
                   datasets={[{ label: $t('stats.label_hours'), color: COLORS.violet, data: result.top_games.map((g) => Math.round((g.minutes / 60) * 10) / 10) }]}
                   horizontal
+                  locale={fmtLocale}
                 />
                 <table class="mt-3 w-full text-sm">
                   <thead>
@@ -634,7 +646,7 @@
             <Card class="p-4">
               <p class="mb-3 text-sm font-semibold">{$t('stats.menu_commands')}</p>
               {#if (result.values ?? []).some((v) => v > 0)}
-                <BarChart labels={result.labels} datasets={[{ label: $t('stats.menu_commands'), color: COLORS.blue, data: result.values }]} />
+                <BarChart labels={result.labels} datasets={[{ label: $t('stats.menu_commands'), color: COLORS.blue, data: result.values }]} locale={fmtLocale} />
               {/if}
               {#if (result.top_commands ?? []).length}
                 <table class="mt-3 w-full text-sm">
@@ -707,6 +719,7 @@
                   { label: $t('stats.label_messages'), color: COLORS.blue, data: result.messages ?? [] },
                   { label: $t('stats.voice_hours'), color: COLORS.violet, data: result.voice_hours ?? [] }
                 ]}
+                locale={fmtLocale}
               />
             </Card>
 
@@ -739,6 +752,7 @@
                   { label: $t('stats.label_messages'), color: COLORS.blue, data: result.messages ?? [] },
                   { label: $t('stats.voice_hours'), color: COLORS.violet, data: result.voice_hours ?? [] }
                 ]}
+                locale={fmtLocale}
               />
             </Card>
 
@@ -843,7 +857,7 @@
                   on:toggle={(e) => toggleSeries('peaks', 2, e.detail)}
                 />
               </div>
-              <LineChart labels={result.labels ?? []} datasets={peakSeries} />
+              <LineChart labels={result.labels ?? []} datasets={peakSeries} locale={fmtLocale} />
             </Card>
 
           <!-- LEADERBOARD ────────────────────────────────────────── -->
@@ -918,10 +932,10 @@
                 {@const d = result[r.key] ?? {}}
                 <Card class="p-4">
                   <p class="text-xs text-muted-foreground">{$t(r.tkey)}</p>
-                  <p class="mt-1 text-3xl font-semibold">{fmtHours((d.rate ?? 0) * 100)}%</p>
+                  <p class="mt-1 text-3xl font-semibold">{fmtHours(retentionPct(d.rate))}%</p>
                   <p class="mt-1 text-sm text-muted-foreground">{$t('stats.retention_stayed', { stayed: d.stayed ?? 0, joined: d.joined ?? 0 })}</p>
                   <div class="mt-3 h-2 overflow-hidden rounded-full bg-secondary">
-                    <div class="h-full rounded-full bg-primary" style="width: {Math.max(0, Math.min(100, (d.rate ?? 0) * 100))}%;"></div>
+                    <div class="h-full rounded-full bg-primary" style="width: {Math.max(0, Math.min(100, retentionPct(d.rate)))}%;"></div>
                   </div>
                 </Card>
               {/each}

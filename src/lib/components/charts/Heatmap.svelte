@@ -27,7 +27,8 @@
   }
   const pad = (n: number) => String(n).padStart(2, '0');
   function fmtVal(v: number): string {
-    return Number.isInteger(v) ? String(v) : String(Math.round(v * 100) / 100);
+    const rounded = Number.isInteger(v) ? v : Math.round(v * 100) / 100;
+    return new Intl.NumberFormat($locale, { maximumFractionDigits: 2 }).format(rounded);
   }
 
   // Cursor-folgendes Tooltip.

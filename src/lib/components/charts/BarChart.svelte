@@ -13,6 +13,7 @@
   }> = [];
   export let stacked: boolean = false;
   export let horizontal: boolean = false;
+  export let locale: string = 'en-US'; // controls axis/tooltip separators (thousands/decimal)
 
   let canvas: HTMLCanvasElement;
   let chart: Chart | null = null;
@@ -41,6 +42,7 @@
         responsive: true,
         maintainAspectRatio: false,
         interaction: { mode: 'index', intersect: false },
+        locale,
         plugins: {
           legend: { display: datasets.length > 1, labels: { color: muted } },
           tooltip: {
@@ -75,14 +77,14 @@
     chart = null;
   });
 
-  function rebuild(_l: unknown, _d: unknown, _s: unknown, _h: unknown) {
+  function rebuild(_l: unknown, _d: unknown, _s: unknown, _h: unknown, _loc: unknown) {
     if (!chart) return;
     const cfg = buildConfig();
     chart.data = cfg.data;
     if (cfg.options) chart.options = cfg.options;
     chart.update();
   }
-  $: rebuild(labels, datasets, stacked, horizontal);
+  $: rebuild(labels, datasets, stacked, horizontal, locale);
 </script>
 
 <div class="relative h-[320px] w-full">

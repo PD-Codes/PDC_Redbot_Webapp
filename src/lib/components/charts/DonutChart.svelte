@@ -5,6 +5,7 @@
 
   export let labels: string[] = [];
   export let data: number[] = [];
+  export let locale: string = 'en-US'; // controls tick/tooltip separators (thousands/decimal)
   export let colors: string[] = [
     '#22c55e',
     '#3b82f6',
@@ -41,6 +42,7 @@
         responsive: true,
         maintainAspectRatio: false,
         cutout: '62%',
+        locale,
         plugins: {
           legend: {
             position: 'right',
@@ -55,8 +57,10 @@
                   (a, b) => a + (Number(b) || 0),
                   0
                 );
-                const pct = total > 0 ? ((value / total) * 100).toFixed(1) : '0';
-                return ` ${ctx.label}: ${value} (${pct}%)`;
+                const pct = total > 0 ? (value / total) * 100 : 0;
+                const valueStr = new Intl.NumberFormat(locale).format(value);
+                const pctStr = new Intl.NumberFormat(locale, { maximumFractionDigits: 1, minimumFractionDigits: 1 }).format(pct);
+                return ` ${ctx.label}: ${valueStr} (${pctStr}%)`;
               }
             }
           }
@@ -74,14 +78,14 @@
     chart = null;
   });
 
-  function rebuild(_l: unknown, _d: unknown, _c: unknown) {
+  function rebuild(_l: unknown, _d: unknown, _c: unknown, _loc: unknown) {
     if (!chart) return;
     const cfg = buildConfig();
     chart.data = cfg.data;
     if (cfg.options) chart.options = cfg.options;
     chart.update();
   }
-  $: rebuild(labels, data, colors);
+  $: rebuild(labels, data, colors, locale);
 </script>
 
 <div class="relative h-[240px] w-full">

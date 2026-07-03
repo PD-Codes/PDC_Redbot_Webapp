@@ -13,6 +13,7 @@
   }> = [];
   export let stacked: boolean = false;
   export let area: boolean = false;
+  export let locale: string = 'en-US'; // controls axis/tooltip separators (thousands/decimal)
 
   let canvas: HTMLCanvasElement;
   let chart: Chart | null = null;
@@ -51,6 +52,7 @@
         responsive: true,
         maintainAspectRatio: false,
         interaction: { mode: 'index', intersect: false },
+        locale,
         plugins: {
           legend: { display: false },
           tooltip: {
@@ -89,14 +91,14 @@
   // Reference every prop so Svelte tracks them all as dependencies.
   // In-place aktualisieren statt zerstören/neu erstellen (deutlich performanter, kein
   // Flackern/Neu-Animieren bei jedem Prop-Wechsel wie z. B. Serien-Toggle).
-  function rebuild(_l: unknown, _d: unknown, _s: unknown, _a: unknown) {
+  function rebuild(_l: unknown, _d: unknown, _s: unknown, _a: unknown, _loc: unknown) {
     if (!chart) return;
     const cfg = buildConfig();
     chart.data = cfg.data;
     if (cfg.options) chart.options = cfg.options;
     chart.update();
   }
-  $: rebuild(labels, datasets, stacked, area);
+  $: rebuild(labels, datasets, stacked, area, locale);
 </script>
 
 <div class="relative h-full w-full">
