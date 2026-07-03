@@ -215,7 +215,7 @@
   "cogs.reload_dash_step1": "Zuerst pdc_webdashboard neu laden (dieser Button).",
   "cogs.reload_dash_step2": "Warten, bis das Gateway wieder läuft.",
   "cogs.reload_dash_step3": "Dann die abhängigen Cogs (neko, nekoapi, …) neu laden und diese Seite aktualisieren.",
-  "cogs.reload_dash_wait": "Empfohlene Wartezeit: etwa 10 Sekunden, bevor du andere Cogs neu lädst oder aktualisierst.",
+  "cogs.reload_dash_wait": "Empfohlene Wartezeit: etwa 30 Sekunden, bevor du andere Cogs neu lädst oder aktualisierst.",
   "cogs.reload_dash_confirm": "Jetzt neu laden",
   "cogs.reload_dash_restarting": "Gateway wird neu gestartet…",
   "cogs.reload_dash_countdown": "Diese Seite lädt automatisch neu…",

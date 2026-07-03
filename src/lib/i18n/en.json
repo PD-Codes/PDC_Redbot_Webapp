@@ -215,7 +215,7 @@
   "cogs.reload_dash_step1": "Reload pdc_webdashboard first (this button).",
   "cogs.reload_dash_step2": "Wait until the gateway is back up.",
   "cogs.reload_dash_step3": "Then reload the dependent cogs (neko, nekoapi, …) and refresh this page.",
-  "cogs.reload_dash_wait": "Recommended wait: about 10 seconds before reloading other cogs or refreshing.",
+  "cogs.reload_dash_wait": "Recommended wait: about 30 seconds before reloading other cogs or refreshing.",
   "cogs.reload_dash_confirm": "Reload now",
   "cogs.reload_dash_restarting": "Restarting the gateway…",
   "cogs.reload_dash_countdown": "This page reloads automatically…",
