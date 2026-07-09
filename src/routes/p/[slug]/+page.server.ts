@@ -2,6 +2,7 @@ import { error } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { rpc, authFromUser, RpcError } from '$lib/server/rpc';
 import { renderMarkdown } from '$lib/markdown';
+import { sanitizeHtml } from '$lib/server/sanitize';
 
 // Custom Page ansehen. Öffentliche Seiten ohne Login; private nur eingeloggt.
 export const load: PageServerLoad = async ({ params, locals }) => {
@@ -26,9 +27,12 @@ export const load: PageServerLoad = async ({ params, locals }) => {
     throw error(404, 'Seite nicht gefunden.');
   }
 
-  // Markdown bevorzugt; sonst Legacy-HTML (vom Owner verfasst).
+  // Markdown bevorzugt; sonst Legacy-HTML (vom Owner verfasst) — server-side
+  // sanitized because it is rendered via {@html}.
   const html =
-    page.markdown && page.markdown.trim() ? renderMarkdown(page.markdown) : (page.html ?? '');
+    page.markdown && page.markdown.trim()
+      ? renderMarkdown(page.markdown)
+      : sanitizeHtml(page.html ?? '');
 
   return { page: { slug: page.slug, title: page.title }, html };
 };

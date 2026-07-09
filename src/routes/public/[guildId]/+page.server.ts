@@ -1,6 +1,7 @@
 import type { PageServerLoad } from './$types';
 import { rpc, authFromUser } from '$lib/server/rpc';
 import { renderMarkdown } from '$lib/markdown';
+import { sanitizeHtml } from '$lib/server/sanitize';
 
 // Public guild showcase page — works WITHOUT login.
 //
@@ -59,7 +60,10 @@ export const load: PageServerLoad = async ({ params, locals }) => {
       // Double-check visibility on the full record (defence in depth).
       if ((r.page.visibility ?? 'public') === 'public') {
         title = r.page.title;
-        html = r.page.markdown?.trim() ? renderMarkdown(r.page.markdown) : (r.page.html ?? '');
+        // Legacy HTML is sanitized server-side because it is rendered via {@html}.
+        html = r.page.markdown?.trim()
+          ? renderMarkdown(r.page.markdown)
+          : sanitizeHtml(r.page.html ?? '');
       }
     } catch {
       /* page vanished between list and get — treat as not public */

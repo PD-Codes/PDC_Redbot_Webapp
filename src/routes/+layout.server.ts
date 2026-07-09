@@ -1,5 +1,6 @@
 import type { LayoutServerLoad } from './$types';
 import { rpcWithRetry, authFromUser } from '$lib/server/rpc';
+import { toPublicUser } from '$lib/server/session';
 
 type NavPage = { slug: string; title: string; nav: boolean; visibility: string };
 type ModulePage = { key: string; name: string; icon: string | null };
@@ -79,5 +80,6 @@ export const load: LayoutServerLoad = async ({ locals, cookies }) => {
     }
   }
 
-  return { user: locals.user, pages: _cache.pages, branding: _cache.branding, modulePages };
+  // Only expose the whitelisted public fields — never the OAuth tokens.
+  return { user: toPublicUser(locals.user), pages: _cache.pages, branding: _cache.branding, modulePages };
 };

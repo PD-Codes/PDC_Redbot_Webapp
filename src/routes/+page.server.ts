@@ -1,5 +1,6 @@
 import type { PageServerLoad } from './$types';
 import { rpc } from '$lib/server/rpc';
+import { toPublicUser } from '$lib/server/session';
 
 // Öffentliche Landing/Übersicht: Hero + Kennzahlen + aktive Befehle.
 // Kein Redirect – Eingeloggte erreichen das Dashboard über die Navigation.
@@ -19,5 +20,6 @@ export const load: PageServerLoad = async ({ locals, cookies }) => {
     online = false;
   }
 
-  return { commands, stats, online, user: locals.user };
+  // Only expose the whitelisted public fields — never the OAuth tokens.
+  return { commands, stats, online, user: toPublicUser(locals.user) };
 };
